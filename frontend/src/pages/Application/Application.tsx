@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios';
 import { FEATURES, FEATURE_KEYS, emptyApplicantForm } from '../../utils/featureConfig';
 import FeatureField from '../../components/forms/FeatureField';
 import { applicationApi } from '../../services/api';
+import DocumentVerificationSection from '../../components/forms/DocumentVerificationSection';
 
 function validateField(name: string, value: string): string | undefined {
   const def = FEATURES[name];
@@ -41,7 +42,13 @@ export default function Application() {
       if (err) errors[key] = err;
     }
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      setSubmitError('Please complete all required fields.');
+      const first = Object.keys(errors)[0];
+      document.getElementById(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => document.getElementById(first)?.focus(), 300);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -63,9 +70,10 @@ export default function Application() {
 
   return (
     <div className="mx-auto max-w-5xl"><div className="mb-7"><p className="text-sm font-medium text-sky-700">Loan assessment</p><h1 className="mt-1 text-3xl font-bold tracking-tight text-[#102a4c]">New Loan Application</h1><p className="mt-2 text-slate-500">Provide your details for an AI-assisted credit assessment. Values are mapped safely to the existing academic model.</p></div>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         {(['Applicant', 'Financial', 'Loan', 'Assets'] as const).map(section => <section key={section} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-semibold text-slate-800">{section} Information</h2><div className="mt-5 grid gap-5 md:grid-cols-2">{FEATURE_KEYS.filter(key => FEATURES[key].section === section).map(key => <FeatureField key={key} name={key} def={FEATURES[key]} value={form[key]} error={fieldErrors[key]} onChange={handleChange} />)}</div></section>)}
-        {submitError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
+        <DocumentVerificationSection />
+        {submitError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{submitError}</p>}
         <button type="submit" disabled={submitting} className="flex w-full items-center justify-center rounded-lg bg-[#0d3b70] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#092e57] disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Analyzing credit application…' : 'Analyze Application'}</button>
       </form>
     </div>

@@ -3,6 +3,7 @@ import type {
   AuthResponse, ApplicantFeatures, ApplicationDetail, ExplanationResult,
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
+  DocumentRecord, DocumentType,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -46,6 +47,14 @@ export const applicationApi = {
     api.post<ApplicationDetail>('/predict', features).then((r) => r.data),
   list: () => api.get<{ applications: ApplicationDetail['application'][] }>('/applications').then((r) => r.data.applications),
   getById: (id: number) => api.get<ApplicationDetail>(`/applications/${id}`).then((r) => r.data),
+};
+
+export const documentApi = {
+  pending: () => api.get<{ documents: DocumentRecord[] }>('/documents/pending').then((r) => r.data.documents),
+  upload: (documentType: DocumentType, file: File) => {
+    const body = new FormData(); body.append('documentType', documentType); body.append('file', file);
+    return api.post<{ document: DocumentRecord }>('/documents', body, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data.document);
+  },
 };
 
 export const explanationApi = {

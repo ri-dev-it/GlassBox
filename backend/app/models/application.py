@@ -15,6 +15,8 @@ class Application(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     prediction = db.relationship("Prediction", backref="application", uselist=False, cascade="all, delete-orphan")
+    documents = db.relationship("Document", backref="application", cascade="all, delete-orphan")
+    bank_eligibilities = db.relationship("BankEligibilityResult", backref="application", cascade="all, delete-orphan")
 
     def set_features(self, features: dict) -> None:
         self.features_json = json.dumps(features)

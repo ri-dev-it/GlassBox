@@ -89,7 +89,15 @@ export interface ApplicationDetail {
   lime: ExplanationResult | null;
   comparison: ComparisonResult | null;
   counterfactual: CounterfactualResult | null;
+  documents?: DocumentRecord[];
+  bankEligibility?: BankEligibilityResult[];
 }
+
+export type DocumentStatus = 'UPLOADED' | 'VERIFYING' | 'VERIFIED' | 'NEEDS_REVIEW' | 'FAILED';
+export type DocumentType = 'PAN_CARD' | 'AADHAAR_CARD' | 'SALARY_SLIP' | 'BANK_STATEMENT' | 'ADDRESS_PROOF' | 'EMPLOYMENT_INCOME_PROOF';
+export interface DocumentVerification { documentType: DocumentType; status: DocumentStatus; confidence: number; extractedInformation: Record<string, unknown>; mismatches: string[]; verificationMessage: string; verifiedAt?: string; }
+export interface DocumentRecord { id: number; documentType: DocumentType; status: DocumentStatus; filename: string; uploadedAt?: string; verification?: DocumentVerification | null; }
+export interface BankEligibilityResult { bankName: string; decision: 'APPROVED' | 'NOT_ELIGIBLE' | 'NEEDS_REVIEW'; probability: number; reasons: string[]; conditions: string[]; riskIndicators: string[]; }
 
 export interface ModelMetadata {
   final_model: string;

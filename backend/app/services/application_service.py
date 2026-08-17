@@ -5,8 +5,10 @@ every step so it can be re-fetched without recomputation later.
 """
 
 from app.extensions import db
-from app.models import Applicant, Application, Prediction, Explanation, Counterfactual
+from app.models import Applicant, Application, Prediction, Explanation, Counterfactual, Document
 from app.services import ml_service
+from app.services.bank_eligibility_service import create_bank_eligibilities
+from app.services.document_verification_service import verify_document
 
 
 def get_or_create_applicant(user) -> Applicant:
@@ -25,6 +27,13 @@ def submit_application(user, features: dict) -> dict:
     application.set_features(features)
     db.session.add(application)
     db.session.flush()
+    # Staged documents remain private and user-owned until a successful submission.
+    pending_documents = Document.query.filter_by(user_id=user.id, application_id=None).all()
+    for document in pending_documents:
+        document.application_id = application.id
+        # Re-run checks against the most current application context when available.
+        if document.verification:
+            verify_document(document, user.full_name)
     application.public_id = f"APP-{application.created_at.year if application.created_at else __import__('datetime').datetime.utcnow().year}-{application.id:04d}"
     db.session.commit()
 
@@ -60,6 +69,10 @@ def submit_application(user, features: dict) -> dict:
     counterfactual.set_alternatives(cf_result["alternatives"])
     db.session.add(counterfactual)
 
+    # General model probability plus published, project-level profile thresholds.
+    bank_eligibilities = create_bank_eligibilities(application.id, result["probability"], features)
+    db.session.add_all(bank_eligibilities)
+
     db.session.commit()
 
     return {
@@ -69,6 +82,8 @@ def submit_application(user, features: dict) -> dict:
         "lime": lime_explanation.to_dict(),
         "comparison": ml_service.get_shap_lime_comparison(shap_result["contributions"], lime_result["contributions"]),
         "counterfactual": counterfactual.to_dict(),
+        "documents": [document.to_dict() for document in pending_documents],
+        "bankEligibility": [record.to_dict() for record in bank_eligibilities],
     }
 
 
@@ -109,6 +124,8 @@ def get_application_detail(application_id: int, user) -> dict | None:
         "lime": explanations.get("lime"),
         "comparison": comparison,
         "counterfactual": counterfactual,
+        "documents": [document.to_dict() for document in application.documents],
+        "bankEligibility": [record.to_dict() for record in application.bank_eligibilities],
     }
 
 

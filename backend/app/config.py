@@ -18,6 +18,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
 _LOCAL_DATABASE = (_BACKEND_DIR / "xai_loan.db").as_posix()
+_DEFAULT_UPLOAD_DIR = (_BACKEND_DIR / "private_uploads").as_posix()
 
 
 def _env_list(key: str, default: str = "http://localhost:5173") -> list[str]:
@@ -44,6 +45,8 @@ class BaseConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
 
     MODEL_PATH: str = os.environ.get("MODEL_PATH", "../ml/models/saved/model.joblib")
+    DOCUMENT_UPLOAD_DIR: str = os.environ.get("DOCUMENT_UPLOAD_DIR", _DEFAULT_UPLOAD_DIR)
+    MAX_DOCUMENT_SIZE_BYTES: int = int(os.environ.get("MAX_DOCUMENT_SIZE_BYTES", str(10 * 1024 * 1024)))
 
     CORS_ORIGINS: list[str] = field(default_factory=lambda: _env_list("CORS_ORIGINS"))
     FRONTEND_URL: str = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")

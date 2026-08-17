@@ -57,6 +57,16 @@ export default function Results() {
         </section>
       )}
 
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-sky-700">AI-assisted document verification</p><h2 className="mt-1 text-lg font-semibold text-slate-800">Document Verification</h2>
+        {detail.documents?.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">{detail.documents.map(document => { const status = document.verification?.status ?? document.status; const colour = status === 'VERIFIED' ? 'text-green-700 bg-green-50' : status === 'NEEDS_REVIEW' ? 'text-amber-800 bg-amber-50' : 'text-slate-700 bg-slate-50'; return <div key={document.id} className={`rounded-lg p-3 ${colour}`}><div className="flex justify-between gap-2 text-sm font-semibold"><span>{document.documentType.replace(/_/g, ' ')}</span><span>{status.replace('_', ' ')}</span></div>{document.verification && <p className="mt-1 text-xs">{document.verification.verificationMessage} ({Math.round(document.verification.confidence * 100)}%)</p>}</div>; })}</div> : <p className="mt-3 text-sm text-slate-500">No documents were attached to this application.</p>}
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium text-sky-700">AI-Predicted Eligibility</p><h2 className="mt-1 text-lg font-semibold text-slate-800">Bank Eligibility</h2><p className="mt-1 text-xs text-slate-500">Educational AI-generated eligibility estimates only; these are not actual bank approvals or rejections.</p>
+        <div className="mt-4 space-y-3">{detail.bankEligibility?.map(bank => { const colour = bank.decision === 'APPROVED' ? 'text-green-700 bg-green-50' : bank.decision === 'NOT_ELIGIBLE' ? 'text-red-700 bg-red-50' : 'text-amber-800 bg-amber-50'; return <article key={bank.bankName} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold text-slate-800">{bank.bankName}</h3><span className={`rounded-full px-2 py-1 text-xs font-semibold ${colour}`}>{bank.decision.replace('_', ' ')}</span></div><p className="mt-2 text-sm text-slate-600">General-model probability: <strong>{Math.round(bank.probability * 100)}%</strong></p><p className="mt-2 text-xs text-slate-600"><strong>Reasons:</strong> {bank.reasons.join(' ')}</p><p className="mt-1 text-xs text-slate-600"><strong>Risk indicators:</strong> {bank.riskIndicators.join(' ')}</p><p className="mt-1 text-xs text-slate-500"><strong>Conditions:</strong> {bank.conditions.join(' ')}</p></article>; })}</div>
+      </section>
+
       {shap && (
         <section>
           <h2 className="text-lg font-semibold text-slate-800 mb-2">Key Factors</h2>
