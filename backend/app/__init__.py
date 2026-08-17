@@ -19,13 +19,16 @@ def create_app(config_name: str | None = None) -> Flask:
     bcrypt.init_app(app)
     migrate.init_app(app, db)
 
+    # Register routes before create_all: route imports register all model
+    # metadata, including document records, with SQLAlchemy.
+    register_blueprints(app)
+
     # SQLite is the zero-configuration local-development store.  Production
     # and MySQL deployments continue to use Flask-Migrate as usual.
     if app.config.get("DEBUG") and app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
         with app.app_context():
             db.create_all()
 
-    register_blueprints(app)
     register_error_handlers(app)
 
     return app

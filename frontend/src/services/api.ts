@@ -15,6 +15,12 @@ export const api = axios.create({
 
 // Attach the JWT (if present) to every outgoing request.
 api.interceptors.request.use((config) => {
+  // FormData must retain the browser-generated multipart boundary. The JSON
+  // default configured above is appropriate for API payloads, not uploads.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers?.delete?.('Content-Type');
+    if (config.headers && !config.headers.delete) delete (config.headers as Record<string, unknown>)['Content-Type'];
+  }
   const token = localStorage.getItem('xai_loan_token');
   if (token) {
     config.headers = config.headers ?? {};
@@ -53,7 +59,7 @@ export const documentApi = {
   pending: () => api.get<{ documents: DocumentRecord[] }>('/documents/pending').then((r) => r.data.documents),
   upload: (documentType: DocumentType, file: File) => {
     const body = new FormData(); body.append('documentType', documentType); body.append('file', file);
-    return api.post<{ document: DocumentRecord }>('/documents', body, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data.document);
+    return api.post<{ document: DocumentRecord }>('/documents', body).then((r) => r.data.document);
   },
 };
 
