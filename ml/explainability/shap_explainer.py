@@ -20,15 +20,50 @@ from preprocessing.feature_config import NUMERIC_FEATURES, CATEGORICAL_FEATURES,
 FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
 
-def _predict_proba_positive(pipeline):
-    """SHAP needs a function returning a single array of the target-class probability."""
-    def f(X: np.ndarray) -> np.ndarray:
-        df = pd.DataFrame(X, columns=FEATURE_COLUMNS)
-        return pipeline.predict_proba(df)[:, 1]
-    return f
+def _raw_feature_name(transformed_name: str) -> str:
+    """Map a preprocessor output column (including one-hot columns) to its form field."""
+    for column in NUMERIC_FEATURES:
+        if transformed_name == f"numeric__{column}":
+            return column
+    for column in CATEGORICAL_FEATURES:
+        if transformed_name.startswith(f"categorical__{column}_"):
+            return column
+    return transformed_name
 
 
-def _background_sample(background_df: pd.DataFrame, n: int = 50) -> pd.DataFrame:
+def _positive_class_values(values: np.ndarray) -> np.ndarray:
+    """Normalise SHAP output from binary tree and linear classifiers to class 1."""
+    if values.ndim == 3:
+        return values[..., 1] if values.shape[-1] == 2 else values[:, 1, :]
+    return values
+
+
+def _raw_contributions(pipeline, raw_df: pd.DataFrame, background_df: pd.DataFrame) -> dict[str, float]:
+    """Explain the fitted estimator on numeric preprocessor output, then regroup one-hot columns.
+
+    This intentionally explains the classifier after its fitted preprocessing.
+    It avoids SHAP's slow generic permutation masker (and its mixed-dtype
+    failure) while retaining an exact correspondence to the saved pipeline.
+    """
+    preprocessor = pipeline.named_steps["preprocessor"]
+    classifier = pipeline.named_steps["classifier"]
+    background = preprocessor.transform(_background_sample(background_df[FEATURE_COLUMNS]))
+    applicant = preprocessor.transform(raw_df[FEATURE_COLUMNS])
+    if hasattr(background, "toarray"):
+        background = background.toarray()
+        applicant = applicant.toarray()
+
+    explanation = shap.Explainer(classifier, background)(applicant)
+    values = _positive_class_values(explanation.values)[0]
+    grouped = {column: 0.0 for column in FEATURE_COLUMNS}
+    for name, value in zip(preprocessor.get_feature_names_out(), values):
+        raw_name = _raw_feature_name(name)
+        if raw_name in grouped:
+            grouped[raw_name] += float(value)
+    return grouped
+
+
+def _background_sample(background_df: pd.DataFrame, n: int = 20) -> pd.DataFrame:
     if len(background_df) <= n:
         return background_df
     return background_df.sample(n=n, random_state=42)
@@ -41,14 +76,10 @@ def local_shap_explanation(pipeline, applicant_df: pd.DataFrame, background_df: 
         [{"feature": ..., "label": ..., "value": ..., "contribution": float, "direction": "positive"|"negative"}]
     "positive" contribution pushes toward APPROVAL; "negative" pushes toward REJECTION.
     """
-    background = _background_sample(background_df[FEATURE_COLUMNS])
-    explainer = shap.Explainer(_predict_proba_positive(pipeline), background)
-    shap_values = explainer(applicant_df[FEATURE_COLUMNS])
-
-    contributions = shap_values.values[0]
+    contributions = _raw_contributions(pipeline, applicant_df, background_df)
     results = []
-    for i, col in enumerate(FEATURE_COLUMNS):
-        contribution = float(contributions[i])
+    for col in FEATURE_COLUMNS:
+        contribution = contributions[col]
         results.append({
             "feature": col,
             "label": label_for(col),
@@ -65,15 +96,12 @@ def global_shap_importance(pipeline, sample_df: pd.DataFrame, max_samples: int =
     Mean |SHAP value| per feature across a sample of applicants --
     answers "what generally influences the model?" for the admin dashboard.
     """
-    sample = _background_sample(sample_df[FEATURE_COLUMNS], n=max_samples)
-    background = _background_sample(sample_df[FEATURE_COLUMNS], n=30)
-    explainer = shap.Explainer(_predict_proba_positive(pipeline), background)
-    shap_values = explainer(sample)
-
-    mean_abs = np.abs(shap_values.values).mean(axis=0)
+    sample = _background_sample(sample_df, n=max_samples)
+    per_row = [_raw_contributions(pipeline, sample.iloc[[index]], sample_df) for index in range(len(sample))]
+    mean_abs = {column: float(np.mean([abs(row[column]) for row in per_row])) for column in FEATURE_COLUMNS}
     results = [
-        {"feature": col, "label": label_for(col), "mean_abs_shap": round(float(mean_abs[i]), 4)}
-        for i, col in enumerate(FEATURE_COLUMNS)
+        {"feature": col, "label": label_for(col), "mean_abs_shap": round(mean_abs[col], 4)}
+        for col in FEATURE_COLUMNS
     ]
     results.sort(key=lambda r: r["mean_abs_shap"], reverse=True)
     return results

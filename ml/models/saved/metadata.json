@@ -1,6 +1,6 @@
 {
   "final_model": "xgboost",
-  "trained_at": "2026-08-13T16:02:09Z",
+  "trained_at": "2026-08-20T07:32:41Z",
   "dataset_size": 1000,
   "train_size": 800,
   "test_size": 200,
