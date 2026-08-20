@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from app.middleware.auth_middleware import roles_required
 from app.schemas.application_schema import validate_application_payload
@@ -21,6 +21,19 @@ def predict():
     try:
         result = application_service.submit_application(g.current_user, model_features)
     except MLServiceError as e:
+        from app.extensions import db
+        db.session.rollback()
         return jsonify({"error": e.message}), e.status_code
+    except Exception as e:
+        # Do not turn an ML/explainer failure into an empty or misleading
+        # response.  Keep the full traceback in the Flask log and provide a
+        # useful development response to the React error handler.
+        current_app.logger.exception("Loan analysis generation failed")
+        from app.extensions import db
+        db.session.rollback()
+        response = {"error": "Analysis generation failed."}
+        if current_app.debug:
+            response["details"] = str(e)
+        return jsonify(response), 500
 
     return jsonify(result), 201

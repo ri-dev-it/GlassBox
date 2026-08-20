@@ -3,6 +3,7 @@ import type {
   AuthResponse, ApplicantFeatures, ApplicationDetail, ExplanationResult,
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
+  AnalysisReport,
   DocumentRecord, DocumentType,
 } from '../types';
 
@@ -53,6 +54,8 @@ export const applicationApi = {
     api.post<ApplicationDetail>('/predict', features).then((r) => r.data),
   list: () => api.get<{ applications: ApplicationDetail['application'][] }>('/applications').then((r) => r.data.applications),
   getById: (id: number) => api.get<ApplicationDetail>(`/applications/${id}`).then((r) => r.data),
+  report: (id: number) => api.get<{ report: AnalysisReport }>(`/applications/${id}/report`).then((r) => r.data.report),
+  downloadReport: (id: number) => api.get(`/applications/${id}/report.pdf`, { responseType: 'blob' }).then((r) => r.data as Blob),
 };
 
 export const documentApi = {

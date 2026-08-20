@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { ApplicationDetail } from '../../types';
+import type { AnalysisReport, ApplicationDetail } from '../../types';
 import { applicationApi } from '../../services/api';
 import ContributionBarChart from '../../components/charts/ContributionBarChart';
 import PlainEnglishCard from '../../components/explanations/PlainEnglishCard';
@@ -8,11 +8,11 @@ import CounterfactualTable from '../../components/explanations/CounterfactualTab
 import ComparisonPanel from '../../components/explanations/ComparisonPanel';
 import { Download } from 'lucide-react';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { formatINR } from '../../utils/featureConfig';
 
 export default function Results() {
   const { id } = useParams();
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
+  const [report, setReport] = useState<AnalysisReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showTechnical, setShowTechnical] = useState(false);
 
@@ -22,6 +22,7 @@ export default function Results() {
       .getById(Number(id))
       .then(setDetail)
       .catch(() => setError('Could not load this application.'));
+    applicationApi.report(Number(id)).then(setReport).catch(() => undefined);
   }, [id]);
 
   if (error) return <p className="text-rejected">{error}</p>;
@@ -31,10 +32,14 @@ export default function Results() {
   if (!prediction) return <p className="text-slate-500">This application has no prediction yet.</p>;
 
   const isApproved = prediction.decision === 'APPROVED';
-  const downloadReport = () => {
-    const content = ['LOANAI — Loan Assessment Report', `Application ID: ${detail.application.application_id}`, `Generated: ${new Date().toLocaleString('en-IN')}`, '', `AI Decision: ${prediction.decision}`, `Model probability of approval: ${(prediction.probability * 100).toFixed(1)}%`, `AI Risk Score: ${prediction.risk_score}/100 (${prediction.risk_level})`, '', `Loan amount: ${formatINR(Number(detail.application.features.credit_amount) * 100)}`, `Loan duration: ${detail.application.features.duration_months} months`, '', 'Disclaimer: This report is a model-based educational decision-support estimate, not a guarantee of loan approval.', '', 'Key factors:', ...(shap?.contributions.slice(0, 5).map(c => `- ${c.label}: ${c.value}`) ?? [])].join('\n');
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
-    const link = document.createElement('a'); link.href = url; link.download = `${detail.application.application_id}-assessment.txt`; link.click(); URL.revokeObjectURL(url);
+  const downloadReport = async () => {
+    try {
+      const pdf = await applicationApi.downloadReport(detail.application.id);
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement('a'); link.href = url; link.download = `${detail.application.application_id}-assessment.pdf`; link.click(); URL.revokeObjectURL(url);
+    } catch {
+      setError('Could not download the PDF report.');
+    }
   };
 
   return (
@@ -48,7 +53,9 @@ export default function Results() {
           Model probability of approval: <strong>{(prediction.probability * 100).toFixed(1)}%</strong>
           <span className="text-slate-400"> -- a statistical estimate, not a certainty.</span>
         </p>
-        </div><button onClick={downloadReport} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Download size={16} />Download report</button></div><div className="mt-5 flex flex-wrap gap-3"><span className="rounded-lg bg-white/70 px-3 py-2 text-sm text-slate-700">AI Risk Score <strong>{prediction.risk_score}/100</strong></span><StatusBadge value={prediction.risk_level} /></div></div>
+        </div><button onClick={downloadReport} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Download size={16} />Download PDF</button></div><div className="mt-5 flex flex-wrap gap-3"><span className="rounded-lg bg-white/70 px-3 py-2 text-sm text-slate-700">AI Risk Score <strong>{prediction.risk_score}/100</strong></span><StatusBadge value={prediction.risk_level} /></div></div>
+
+      {report && <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm font-medium text-sky-700">Stored analysis report</p><h2 className="mt-1 text-lg font-semibold text-slate-800">Top contributing factors</h2><div className="mt-4 space-y-3">{report.factors.map(factor => <article key={factor.feature} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold text-slate-800">{factor.label}</h3><span className={`rounded-full px-2 py-1 text-xs font-semibold ${factor.direction === 'positive' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{factor.direction === 'positive' ? 'Supports approval' : 'Supports rejection'}</span></div><p className="mt-2 text-sm text-slate-600">Applicant value: <strong>{String(factor.value)}</strong></p><p className="mt-1 text-sm text-slate-600">{factor.reason}</p></article>)}</div><div className="mt-5 rounded-lg bg-slate-50 p-4"><h3 className="font-semibold text-slate-800">LIME-based local explanation</h3><p className="mt-2 whitespace-pre-line text-sm text-slate-600">{report.lime.summary}</p></div><div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700"><strong>Risk analysis:</strong> Model-derived risk score {report.risk.score}/100 ({report.risk.level.toLowerCase()} risk).</div><p className="mt-5 text-xs text-slate-500">{report.disclaimer}</p></section>}
 
       {shap && (
         <section>

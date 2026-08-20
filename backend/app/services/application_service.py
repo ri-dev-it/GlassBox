@@ -23,6 +23,22 @@ def get_or_create_applicant(user) -> Applicant:
 def submit_application(user, features: dict) -> dict:
     applicant = get_or_create_applicant(user)
 
+    # Run all ML work before persisting the application.  If an explainer or
+    # model asset fails, no incomplete "Under Review" application is left in
+    # the database.
+    result = ml_service.predict_application(features)
+    metadata = ml_service.get_model_metadata()
+    shap_result = ml_service.get_shap_explanation(features, result["prediction"], result["probability"])
+    lime_result = ml_service.get_lime_explanation(features, result["prediction"], result["probability"])
+    if result["prediction"] == "REJECTED":
+        cf_result = ml_service.get_counterfactual(features)
+    else:
+        cf_result = {
+            "found": False,
+            "message": "Counterfactual suggestions are only generated for rejected applications.",
+            "alternatives": [],
+        }
+
     application = Application(applicant_id=applicant.id)
     application.set_features(features)
     db.session.add(application)
@@ -31,15 +47,10 @@ def submit_application(user, features: dict) -> dict:
     pending_documents = Document.query.filter_by(user_id=user.id, application_id=None).all()
     for document in pending_documents:
         document.application_id = application.id
-        # Re-run checks against the most current application context when available.
         if document.verification:
             verify_document(document, user.full_name)
     application.public_id = f"APP-{application.created_at.year if application.created_at else __import__('datetime').datetime.utcnow().year}-{application.id:04d}"
-    db.session.commit()
 
-    # 1. Prediction
-    result = ml_service.predict_application(features)
-    metadata = ml_service.get_model_metadata()
     prediction = Prediction(
         application_id=application.id,
         decision=result["prediction"],
@@ -47,24 +58,19 @@ def submit_application(user, features: dict) -> dict:
         model_name=metadata.get("final_model", "unknown"),
     )
     db.session.add(prediction)
-    db.session.commit()
+    db.session.flush()
 
-    # 2. SHAP explanation
-    shap_result = ml_service.get_shap_explanation(features, result["prediction"], result["probability"])
+    # Persist the previously generated explanations alongside the prediction.
     shap_explanation = Explanation(prediction_id=prediction.id, method="shap")
     shap_explanation.set_contributions(shap_result["contributions"])
     shap_explanation.plain_english = shap_result["plain_english"]
     db.session.add(shap_explanation)
 
-    # 3. LIME explanation
-    lime_result = ml_service.get_lime_explanation(features, result["prediction"], result["probability"])
     lime_explanation = Explanation(prediction_id=prediction.id, method="lime")
     lime_explanation.set_contributions(lime_result["contributions"])
     lime_explanation.plain_english = lime_result["plain_english"]
     db.session.add(lime_explanation)
 
-    # 4. Counterfactual (only meaningful for rejections, but always attempted)
-    cf_result = ml_service.get_counterfactual(features)
     counterfactual = Counterfactual(prediction_id=prediction.id, found=cf_result["found"], message=cf_result["message"])
     counterfactual.set_alternatives(cf_result["alternatives"])
     db.session.add(counterfactual)

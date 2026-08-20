@@ -15,7 +15,14 @@ class Counterfactual(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     def set_alternatives(self, alternatives: list) -> None:
-        self.alternatives_json = json.dumps(alternatives)
+        # DiCE returns NumPy scalar values (for example ``np.int64``) for
+        # counterfactual feature changes.  Convert those values at the
+        # persistence boundary so rejected applications can be stored and
+        # returned through Flask's JSON response just like approved ones.
+        self.alternatives_json = json.dumps(
+            alternatives,
+            default=lambda value: value.item() if hasattr(value, "item") else str(value),
+        )
 
     def get_alternatives(self) -> list:
         return json.loads(self.alternatives_json)

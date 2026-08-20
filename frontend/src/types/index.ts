@@ -93,6 +93,26 @@ export interface ApplicationDetail {
   bankEligibility?: BankEligibilityResult[];
 }
 
+export interface AnalysisReportFactor {
+  feature: string;
+  label: string;
+  value: string | number;
+  contribution: number;
+  direction: 'positive' | 'negative';
+  reason: string;
+}
+
+export interface AnalysisReport {
+  application_id: string;
+  decision: 'APPROVED' | 'REJECTED';
+  probability: number;
+  confidence: number;
+  factors: AnalysisReportFactor[];
+  lime: { summary: string; factors: AnalysisReportFactor[] };
+  risk: { score: number; level: 'LOW' | 'MEDIUM' | 'HIGH' };
+  disclaimer: string;
+}
+
 export type DocumentStatus = 'UPLOADED' | 'VERIFYING' | 'VERIFIED' | 'NEEDS_REVIEW' | 'FAILED';
 export type DocumentType = 'PAN_CARD' | 'AADHAAR_CARD' | 'SALARY_SLIP' | 'BANK_STATEMENT' | 'ADDRESS_PROOF' | 'EMPLOYMENT_INCOME_PROOF';
 export interface DocumentVerification { documentType: DocumentType; status: DocumentStatus; confidence: number; extractedInformation: Record<string, unknown>; mismatches: string[]; verificationMessage: string; verifiedAt?: string; }
