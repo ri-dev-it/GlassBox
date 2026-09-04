@@ -38,6 +38,21 @@ require `Authorization: Bearer <jwt>`.
 | GET | `/analytics/fairness` | staff | Fairlearn group comparison + disparity metrics. |
 | GET | `/analytics/applications-summary` | staff | Total/approved/rejected counts. |
 
+## Merchant risk
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| POST | `/merchants/<merchant_id>/verify-documents` | any | Simulated manual GST/bank-value consistency check; persists the result. |
+| GET | `/merchants/<merchant_id>/verify-documents` | any | Retrieves the saved simulated verification result. |
+| POST | `/merchants/assess` | any | Transaction-model assessment including persisted verification signals. |
+| GET | `/merchants/<merchant_id>/tier-gaps` | any | Illustrative Capital tier qualification and next-tier gaps. |
+| POST | `/merchants/fraud-check` | any | Explainable fraud-pattern checks over daily transaction history. |
+| GET | `/portfolio/exposure` | staff | Synthetic portfolio tier counts, demo exposure, and common blockers. |
+
+Document verification uses manual number entry only; it does not upload files,
+perform OCR, or authenticate documents. Tier thresholds and exposure amounts
+are illustrative simulated values, not real Razorpay Capital policy.
+
 ## Error format
 
 Validation errors: `{"errors": ["message", ...]}` (400).

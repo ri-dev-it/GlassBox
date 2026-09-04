@@ -37,3 +37,23 @@ def tier_gaps(merchant_id):
         return jsonify(ml_service.get_merchant_tier_gaps(merchant_id, supplied_features or None)), 200
     except MLServiceError as error:
         return jsonify({"error": error.message}), error.status_code
+
+
+@merchants_bp.post("/merchants/<merchant_id>/verify-documents")
+@roles_required("applicant", "loan_officer", "admin")
+def verify_documents(merchant_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(ml_service.verify_merchant_documents(merchant_id, data)), 200
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code
+
+
+@merchants_bp.get("/merchants/<merchant_id>/verify-documents")
+@roles_required("applicant", "loan_officer", "admin")
+def get_verified_documents(merchant_id):
+    try:
+        result = ml_service.get_merchant_document_verification(merchant_id)
+        return jsonify(result or {"merchant_id": merchant_id, "verification": None}), 200
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code

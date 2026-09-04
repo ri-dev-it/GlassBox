@@ -63,7 +63,27 @@ export interface MerchantAssessment {
   };
   shap: ExplanationResult;
   fraud: FraudCheckResult | null;
+  document_verification: DocumentConsistencyResult | null;
+  risk_signals: string[];
   disclaimer: string;
+}
+
+export interface DocumentMismatch {
+  field: string;
+  declared_value: number;
+  expected_value: number;
+  discrepancy_pct: number;
+  message: string;
+}
+
+export interface DocumentConsistencyResult {
+  merchant_id: string;
+  gst_reported_monthly_revenue: number;
+  bank_statement_avg_balance: number;
+  bank_statement_monthly_inflow: number;
+  consistent: boolean;
+  mismatches: DocumentMismatch[];
+  verified_at: string | null;
 }
 
 export interface MerchantTransactionDay {

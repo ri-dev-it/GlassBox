@@ -17,6 +17,19 @@ in `database/schema.sql`; in normal development, use Flask-Migrate:
 - **predictions** -- decision + probability + which model produced it. 1:1 with application.
 - **explanations** -- SHAP and LIME rows (method column), each with contributions (JSON) + plain-English text.
 - **counterfactuals** -- found/message/alternatives (JSON) per prediction.
+- **documents** and **document_verifications** -- uploaded document metadata and existing optional OCR-style review records.
+- **bank_eligibility_results** -- legacy per-application educational bank-profile results.
+- **merchant_transaction_profiles** -- persisted transaction behavior features plus actual monthly GMV/inflow used by merchant checks.
+- **merchant_transaction_history** -- daily GMV, order, refund, and chargeback records for fraud review.
+- **merchant_fraud_checks** -- persisted fraud score, rule flags, and flagged days.
+- **merchant_tier_assessments** -- persisted Capital tier-gap results.
+- **portfolio_exposure_snapshots** -- portfolio tier counts, simulated exposure, and blocking-signal summaries.
+- **merchant_document_verifications** -- manual declared GST/bank values and consistency results, separate from uploaded-document verification.
+
+The merchant risk tables are additive to the original loan schema. Apply the
+latest migration with `flask db upgrade`; `database/schema.sql` is also kept
+as a complete fresh-MySQL reference. Capital thresholds and exposure amounts
+are illustrative demo values, not real Razorpay Capital policy.
 
 ## First admin account
 

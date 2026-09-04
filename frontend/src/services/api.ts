@@ -4,7 +4,7 @@ import type {
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
-  DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures, PortfolioExposure,
+  DocumentConsistencyResult, DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures, PortfolioExposure,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -81,6 +81,8 @@ export const merchantApi = {
   fraudCheck: (merchant_id: string, transaction_history: MerchantTransactionDay[]) =>
     api.post<FraudCheckResult>('/merchants/fraud-check', { merchant_id, transaction_history }).then((r) => r.data),
   tierGaps: (merchantId: string, features?: MerchantTransactionFeatures) => api.get<MerchantTierGaps>(`/merchants/${encodeURIComponent(merchantId)}/tier-gaps`, { params: features }).then((r) => r.data),
+  verifyDocuments: (merchantId: string, declared: { gst_reported_monthly_revenue: number; bank_statement_avg_balance: number; bank_statement_monthly_inflow: number }) => api.post<DocumentConsistencyResult>(`/merchants/${encodeURIComponent(merchantId)}/verify-documents`, declared).then((r) => r.data),
+  getDocumentVerification: (merchantId: string) => api.get<DocumentConsistencyResult | { merchant_id: string; verification: null }>(`/merchants/${encodeURIComponent(merchantId)}/verify-documents`).then((r) => r.data),
 };
 
 export const portfolioApi = {

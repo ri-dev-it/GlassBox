@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { merchantApi } from '../../services/api';
-import type { FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures } from '../../types';
+import type { DocumentConsistencyResult, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures } from '../../types';
 import ContributionBarChart from '../../components/charts/ContributionBarChart';
 import PlainEnglishCard from '../../components/explanations/PlainEnglishCard';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -42,6 +42,9 @@ export default function MerchantRisk() {
   const [assessment, setAssessment] = useState<MerchantAssessment | null>(null);
   const [fraud, setFraud] = useState<FraudCheckResult | null>(null);
   const [tierGaps, setTierGaps] = useState<MerchantTierGaps | null>(null);
+  const [verification, setVerification] = useState<DocumentConsistencyResult | null>(null);
+  const [declared, setDeclared] = useState({ gst_reported_monthly_revenue: 100000, bank_statement_avg_balance: 50000, bank_statement_monthly_inflow: 100000 });
+  const [verificationLoading, setVerificationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -61,6 +64,19 @@ export default function MerchantRisk() {
     finally { setLoading(false); }
   };
 
+  useEffect(() => {
+    merchantApi.getDocumentVerification(merchantId).then((result) => {
+      if ('consistent' in result) setVerification(result);
+    }).catch(() => undefined);
+  }, [merchantId]);
+
+  const verifyDocuments = async (event: FormEvent) => {
+    event.preventDefault(); setVerificationLoading(true); setError(null);
+    try { setVerification(await merchantApi.verifyDocuments(merchantId, declared)); }
+    catch (requestError: any) { setError(requestError?.response?.data?.error ?? 'Could not verify declared values.'); }
+    finally { setVerificationLoading(false); }
+  };
+
   return <div className="max-w-5xl space-y-6">
       <div><p className="text-sm font-medium text-sky-700">Simulated merchant underwriting</p><h1 className="mt-1 text-3xl font-bold text-[#102a4c]">Merchant Risk Assessment</h1><p className="mt-2 text-sm text-slate-500">Enter transaction behavior to estimate risk with the synthetic demo model. This is not real Razorpay data or a lending decision.</p></div>
     <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -70,10 +86,12 @@ export default function MerchantRisk() {
     </form>
     {assessment && <section className="space-y-4">
       {fraud && fraud.fraud_score >= 0.5 && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><strong>Fraud-pattern warning:</strong> rule-based checks flagged abnormal transaction behavior ({Math.round(fraud.fraud_score * 100)} / 100). Review the flagged days and signals before relying on this assessment.</div>}
+      {assessment.document_verification && !assessment.document_verification.consistent && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><strong>Document consistency warning:</strong> persisted manual declarations do not match the merchant's transaction data. This is an additional risk signal.</div>}
       {tierGaps && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm font-medium text-sky-700">Illustrative Capital tier fit</p><h2 className="mt-1 text-lg font-semibold text-slate-800">{tierGaps.current_tier ?? 'Not yet eligible'}</h2><p className="mt-1 text-xs text-slate-500">{tierGaps.disclaimer}</p>{tierGaps.next_tier_gap && <div className="mt-4 rounded-lg bg-slate-50 p-4"><p className="text-sm font-semibold text-slate-700">Gap to {tierGaps.next_tier}</p><p className="mt-1 text-sm text-slate-600">{tierGaps.next_tier_gap.overall_message}</p><ul className="mt-3 space-y-2">{tierGaps.next_tier_gap.gaps.map((gap) => <li key={gap.feature} className="text-sm text-slate-600">{gap.human_message}</li>)}</ul></div>}</div>}
       <div className={`rounded-xl border p-5 ${assessment.prediction.risk_level === 'HIGH' ? 'border-red-200 bg-red-50' : assessment.prediction.risk_level === 'MEDIUM' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}><p className="text-sm font-medium text-slate-600">Synthetic transaction model result</p><div className="mt-1 flex flex-wrap items-baseline gap-3"><h2 className="text-2xl font-bold text-slate-900">{assessment.prediction.prediction.replace('_', ' ')}</h2><span className="text-sm text-slate-600">Risk score {assessment.prediction.risk_score}/100</span></div><p className="mt-2 text-sm text-slate-600">Estimated high-risk probability: <strong>{(assessment.prediction.probability * 100).toFixed(1)}%</strong></p><p className="mt-3 text-xs text-slate-500">{assessment.disclaimer}</p></div>
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold text-slate-800">Why this result?</h2><div className="mt-3"><PlainEnglishCard text={assessment.shap.plain_english} /></div><div className="mt-4"><ContributionBarChart contributions={assessment.shap.contributions} /></div></div>
       {fraud && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold text-slate-800">Daily transaction signals</h2><p className="mt-1 text-xs text-slate-500">Simulated daily history for demo visualization. Red bars mark days flagged by transparent fraud rules.</p><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={buildDemoHistory(values)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Bar dataKey="order_count">{buildDemoHistory(values).map((day) => <Cell key={day.date} fill={fraud.flagged_days.includes(day.date) ? '#dc2626' : '#0284c7'} />)}</Bar></BarChart></ResponsiveContainer></div><div className="mt-4 space-y-2">{fraud.flags.length ? fraud.flags.map((flag) => <p key={flag} className="text-sm text-slate-700">{flag}</p>) : <p className="text-sm text-slate-500">No transparent fraud-pattern rules were triggered.</p>}</div></div>}
     </section>}
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm font-medium text-sky-700">Simulated document check</p><h2 className="mt-1 text-lg font-semibold text-slate-800">Verify declared business values</h2><p className="mt-1 text-xs text-slate-500">Demo mode: enter values as if extracted from GST and bank documents. No file upload or OCR is performed.</p><form onSubmit={verifyDocuments} className="mt-4 grid gap-4 md:grid-cols-3"><label className="text-sm text-slate-700">GST monthly revenue<input required type="number" min="0" step="0.01" value={declared.gst_reported_monthly_revenue} onChange={(event) => setDeclared({ ...declared, gst_reported_monthly_revenue: Number(event.target.value) })} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm text-slate-700">Bank average balance<input required type="number" min="0" step="0.01" value={declared.bank_statement_avg_balance} onChange={(event) => setDeclared({ ...declared, bank_statement_avg_balance: Number(event.target.value) })} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" /></label><label className="text-sm text-slate-700">Bank monthly inflow<input required type="number" min="0" step="0.01" value={declared.bank_statement_monthly_inflow} onChange={(event) => setDeclared({ ...declared, bank_statement_monthly_inflow: Number(event.target.value) })} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" /></label><button disabled={verificationLoading} className="rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 md:col-span-3 md:w-fit">{verificationLoading ? 'Verifying...' : 'Verify declared values'}</button></form>{verification && <div className={`mt-4 rounded-lg p-4 ${verification.consistent ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}><p className="font-semibold">{verification.consistent ? 'Consistent with transaction data' : 'Inconsistent with transaction data'}</p>{verification.mismatches.length ? <ul className="mt-2 space-y-1 text-sm">{verification.mismatches.map((mismatch) => <li key={mismatch.field}>{mismatch.message}</li>)}</ul> : <p className="mt-1 text-sm">No declared-value mismatches exceeded the 20% review threshold.</p>}</div>}</section>
   </div>;
 }

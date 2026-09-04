@@ -163,6 +163,7 @@ def get_fairness_report() -> dict:
 def assess_merchant(features: dict) -> dict:
     _require_ml()
     try:
+        from app.models import MerchantDocumentVerification
         from data.synthetic_transactions import TRANSACTION_FEATURES, TRANSACTION_LABELS, TRANSACTION_RANGES
         from fraud.pattern_detector import FRAUD_SCORE_THRESHOLD, detect_fraud_signals
         from prediction.transaction_predictor import transaction_to_dataframe
@@ -203,6 +204,15 @@ def assess_merchant(features: dict) -> dict:
             fraud_result = detect_fraud_signals(transaction_history)
             if fraud_result["fraud_score"] >= FRAUD_SCORE_THRESHOLD:
                 summary += "\n- Transparent fraud-pattern rules also flagged abnormal transaction behavior; review the flagged days before relying on this risk assessment."
+        verification = MerchantDocumentVerification.query.filter_by(merchant_id=str(features.get("merchant_id", ""))).first()
+        verification_result = verification.to_dict() if verification else None
+        if verification and not verification.consistent:
+            summary += "\n- Persisted document consistency checks flagged a declaration mismatch; treat this as an additional risk signal."
+        risk_signals = []
+        if verification and not verification.consistent:
+            risk_signals.append("document_consistency_mismatch")
+        if fraud_result and fraud_result["fraud_score"] >= FRAUD_SCORE_THRESHOLD:
+            risk_signals.append("fraud_pattern_warning")
         return {
             "prediction": {
                 **result,
@@ -212,6 +222,8 @@ def assess_merchant(features: dict) -> dict:
             },
             "shap": {"contributions": contributions, "plain_english": summary},
             "fraud": fraud_result,
+            "document_verification": verification_result,
+            "risk_signals": risk_signals,
             "disclaimer": "This assessment uses synthetic transaction data for demo purposes, not real Razorpay merchant data or policy.",
         }
     except TransactionModelNotTrainedError as e:
@@ -240,12 +252,25 @@ def _transaction_portfolio() -> tuple[list, list[str]]:
 
 
 def _merchant_features(merchant_id: str) -> dict:
+    from app.extensions import db
+    from app.models import MerchantTransactionProfile
     data, feature_columns = _transaction_portfolio()
+    profile = MerchantTransactionProfile.query.filter_by(merchant_id=str(merchant_id)).first()
+    if profile:
+        return profile.feature_dict()
     try:
         row_index = int(str(merchant_id).rsplit("-", 1)[-1]) % len(data)
     except ValueError:
         row_index = sum(ord(char) for char in str(merchant_id)) % len(data)
-    return data.iloc[row_index][feature_columns].to_dict()
+    features = data.iloc[row_index][feature_columns].to_dict()
+    profile = MerchantTransactionProfile(
+        merchant_id=str(merchant_id), **features,
+        actual_monthly_gmv=100000 * (1 + float(features["gmv_trend_30d"])),
+        actual_monthly_inflow=100000 * (1 + float(features["gmv_trend_90d"])),
+    )
+    db.session.add(profile)
+    db.session.commit()
+    return features
 
 
 def _serialize_tier_result(result) -> dict:
@@ -283,6 +308,53 @@ def get_merchant_tier_gaps(merchant_id: str, supplied_features: dict | None = No
         "tiers": [_serialize_tier_result(result) for result in ranked],
         "disclaimer": "Capital tier thresholds are illustrative simulated values for this demo, not real Razorpay Capital policy.",
     }
+
+
+def verify_merchant_documents(merchant_id: str, declared: dict) -> dict:
+    _require_ml()
+    from app.extensions import db
+    from app.models import MerchantDocumentVerification, MerchantTransactionProfile
+    from verification.document_checker import check_document_consistency
+
+    required = ("gst_reported_monthly_revenue", "bank_statement_avg_balance", "bank_statement_monthly_inflow")
+    errors = []
+    for field in required:
+        if field not in declared or declared[field] in (None, ""):
+            errors.append(f"'{field}' is required.")
+            continue
+        try:
+            declared[field] = float(declared[field])
+        except (TypeError, ValueError):
+            errors.append(f"'{field}' must be a number.")
+    if errors:
+        raise MLServiceError("Invalid declared document values: " + " ".join(errors), 400)
+    if any(declared[field] < 0 for field in required):
+        raise MLServiceError("Declared document values cannot be negative.", 400)
+
+    _merchant_features(merchant_id)
+    profile = MerchantTransactionProfile.query.filter_by(merchant_id=str(merchant_id)).first()
+    result = check_document_consistency(declared, {
+        "actual_monthly_gmv": profile.actual_monthly_gmv,
+        "actual_monthly_inflow": profile.actual_monthly_inflow,
+    })
+    verification = MerchantDocumentVerification.query.filter_by(merchant_id=str(merchant_id)).first()
+    if verification is None:
+        verification = MerchantDocumentVerification(merchant_id=str(merchant_id))
+        db.session.add(verification)
+    verification.gst_reported_monthly_revenue = declared["gst_reported_monthly_revenue"]
+    verification.bank_statement_avg_balance = declared["bank_statement_avg_balance"]
+    verification.bank_statement_monthly_inflow = declared["bank_statement_monthly_inflow"]
+    verification.consistent = result["consistent"]
+    verification.set_mismatches(result["mismatches"])
+    db.session.commit()
+    return verification.to_dict()
+
+
+def get_merchant_document_verification(merchant_id: str) -> dict | None:
+    _require_ml()
+    from app.models import MerchantDocumentVerification
+    verification = MerchantDocumentVerification.query.filter_by(merchant_id=str(merchant_id)).first()
+    return verification.to_dict() if verification else None
 
 
 def get_portfolio_exposure() -> dict:
