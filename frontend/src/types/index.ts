@@ -236,6 +236,23 @@ export interface GlobalShapEntry {
   mean_abs_shap: number;
 }
 
+export interface ModelMetricSnapshot {
+  model_key: string;
+  model_version: string;
+  precision: number;
+  recall: number;
+  f1: number;
+  roc_auc: number;
+  dataset_size: number | null;
+  test_size: number | null;
+  evaluated_at: string | null;
+}
+
+export interface ModelsMetrics {
+  latest: Record<string, ModelMetricSnapshot>;
+  history: Record<string, ModelMetricSnapshot[]>;
+}
+
 export interface FairnessReport {
   protected_attribute: string;
   protected_attribute_caveat: string;

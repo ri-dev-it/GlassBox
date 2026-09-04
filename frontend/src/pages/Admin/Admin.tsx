@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ModelMetadata, GlobalShapEntry, FairnessReport, ApplicationsSummary } from '../../types';
+import type { ModelMetadata, ModelsMetrics, GlobalShapEntry, FairnessReport, ApplicationsSummary } from '../../types';
 import { analyticsApi } from '../../services/api';
 import StatCard from '../../components/dashboard/StatCard';
 import GlobalImportanceChart from '../../components/charts/GlobalImportanceChart';
@@ -11,6 +11,7 @@ export default function Admin() {
   const [tab, setTab] = useState<Tab>('overview');
   const [summary, setSummary] = useState<ApplicationsSummary | null>(null);
   const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
+  const [modelMetrics, setModelMetrics] = useState<ModelsMetrics | null>(null);
   const [globalShap, setGlobalShap] = useState<GlobalShapEntry[] | null>(null);
   const [fairness, setFairness] = useState<FairnessReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +19,7 @@ export default function Admin() {
   useEffect(() => {
     analyticsApi.applicationsSummary().then(setSummary).catch(() => undefined);
     analyticsApi.model().then(setMetadata).catch((e) => setError(e?.response?.data?.error ?? 'Model not trained yet.'));
+    analyticsApi.models().then(setModelMetrics).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -86,6 +88,36 @@ export default function Admin() {
               <p className="text-xs text-slate-400 mt-3">
                 Trained on {metadata.dataset_size} records ({metadata.train_size} train / {metadata.test_size} test).
               </p>
+            </div>
+          )}
+          {modelMetrics && (
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="font-medium text-slate-800 mb-1">Model Metrics Comparison</h2>
+              <p className="text-xs text-slate-500 mb-3">Held-out test-set metrics. Hover a column heading for a plain-English explanation.</p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-slate-500">
+                      <th className="pb-2 font-medium">Model</th>
+                      <th className="pb-2 font-medium" title="Of positive predictions, the fraction that were actually positive">Precision</th>
+                      <th className="pb-2 font-medium" title="Of actual positive cases, the fraction the model found">Recall</th>
+                      <th className="pb-2 font-medium" title="The balance between precision and recall">F1 Score</th>
+                      <th className="pb-2 font-medium" title="How well the model separates the two classes">ROC-AUC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(modelMetrics.latest).map(([key, metric]) => (
+                      <tr key={key} className="border-b border-slate-100 last:border-0">
+                        <td className="py-3 font-medium text-slate-700">{key === 'income_model' ? 'Income-based model' : 'Transaction-based model'}</td>
+                        <td className="py-3 text-slate-600">{metric.precision.toFixed(3)}</td>
+                        <td className="py-3 text-slate-600">{metric.recall.toFixed(3)}</td>
+                        <td className="py-3 text-slate-600">{metric.f1.toFixed(3)}</td>
+                        <td className="py-3 text-slate-600">{metric.roc_auc.toFixed(3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

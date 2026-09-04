@@ -133,3 +133,17 @@ CREATE TABLE IF NOT EXISTS merchant_document_verifications (
     mismatches_json TEXT NOT NULL, verified_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_merchant_document_verifications_merchant (merchant_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS model_metrics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    model_key VARCHAR(100) NOT NULL,
+    model_version VARCHAR(100) NOT NULL,
+    precision FLOAT NOT NULL,
+    recall FLOAT NOT NULL,
+    f1 FLOAT NOT NULL,
+    roc_auc FLOAT NOT NULL,
+    dataset_size INT NULL,
+    test_size INT NULL,
+    evaluated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_model_metrics_model_key (model_key)
+) ENGINE=InnoDB;

@@ -45,6 +45,12 @@ Artifacts saved to `ml/models/saved/`:
 - `model.joblib` -- the full sklearn Pipeline (preprocessing + classifier).
 - `metadata.json` -- which model won, both models' metrics, dataset sizes.
 
+Both `metadata.json` and `transaction_model_metadata.json` include precision,
+recall, F1, and ROC-AUC computed on held-out test data. The admin metrics
+comparison is served by `GET /api/analytics/models`; each current metadata
+version is also snapshotted in the backend `model_metrics` table so history
+is not limited to the latest JSON overwrite.
+
 `ml/data/processed/test_with_predictions.csv` -- the held-out test set
 with predictions attached, used by the fairness dashboard so it never
 has to retrain or leak into training data.

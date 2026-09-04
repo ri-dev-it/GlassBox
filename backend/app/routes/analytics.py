@@ -18,6 +18,16 @@ def model_analytics():
     return jsonify(metadata), 200
 
 
+@analytics_bp.get("/analytics/models")
+@roles_required("loan_officer", "admin")
+def models_analytics():
+    try:
+        metrics = ml_service.get_models_metrics()
+    except MLServiceError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify(metrics), 200
+
+
 @analytics_bp.get("/analytics/shap")
 @roles_required("loan_officer", "admin")
 def global_shap():

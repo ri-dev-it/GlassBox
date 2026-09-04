@@ -9,5 +9,6 @@ from app.models.bank_eligibility import BankEligibilityResult
 from app.models.merchant import (MerchantDocumentVerification, MerchantFraudCheck,
 								 MerchantTierAssessment, MerchantTransactionDay,
 								 MerchantTransactionProfile, PortfolioExposureSnapshot)
+from app.models.model_metric import ModelMetric
 
-__all__ = ["User", "Applicant", "Application", "Prediction", "Explanation", "Counterfactual", "Document", "DocumentVerification", "BankEligibilityResult", "MerchantDocumentVerification", "MerchantFraudCheck", "MerchantTierAssessment", "MerchantTransactionDay", "MerchantTransactionProfile", "PortfolioExposureSnapshot"]
+__all__ = ["User", "Applicant", "Application", "Prediction", "Explanation", "Counterfactual", "Document", "DocumentVerification", "BankEligibilityResult", "MerchantDocumentVerification", "MerchantFraudCheck", "MerchantTierAssessment", "MerchantTransactionDay", "MerchantTransactionProfile", "PortfolioExposureSnapshot", "ModelMetric"]

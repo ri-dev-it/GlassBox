@@ -37,6 +37,7 @@ require `Authorization: Bearer <jwt>`.
 | GET | `/analytics/shap` | staff | Global SHAP feature importance. |
 | GET | `/analytics/fairness` | staff | Fairlearn group comparison + disparity metrics. |
 | GET | `/analytics/applications-summary` | staff | Total/approved/rejected counts. |
+| GET | `/analytics/models` | staff | Current and historical held-out Precision, Recall, F1, and ROC-AUC for both model paths; current versions are persisted in `model_metrics`. |
 
 ## Merchant risk
 

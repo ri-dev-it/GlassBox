@@ -4,7 +4,7 @@ import type {
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
-  DocumentConsistencyResult, DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures, PortfolioExposure,
+  DocumentConsistencyResult, DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures, ModelsMetrics, PortfolioExposure,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -91,6 +91,7 @@ export const portfolioApi = {
 
 export const analyticsApi = {
   model: () => api.get<ModelMetadata>('/analytics/model').then((r) => r.data),
+  models: () => api.get<ModelsMetrics>('/analytics/models').then((r) => r.data),
   globalShap: () => api.get<{ global_importance: GlobalShapEntry[] }>('/analytics/shap').then((r) => r.data.global_importance),
   fairness: () => api.get<FairnessReport>('/analytics/fairness').then((r) => r.data),
   applicationsSummary: () => api.get<ApplicationsSummary>('/analytics/applications-summary').then((r) => r.data),

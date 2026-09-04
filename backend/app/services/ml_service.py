@@ -152,6 +152,46 @@ def get_model_metadata() -> dict:
         raise MLServiceError(str(e), 503)
 
 
+def get_models_metrics() -> dict:
+    """Return and snapshot held-out metrics for the income and transaction models."""
+    _require_ml()
+    from app.extensions import db
+    from app.models import ModelMetric
+    from prediction.transaction_predictor import load_transaction_metadata
+
+    try:
+        metadata_by_model = {
+            "income_model": load_metadata(),
+            "transaction_model": load_transaction_metadata(),
+        }
+    except (ModelNotTrainedError, TransactionModelNotTrainedError) as error:
+        raise MLServiceError(str(error), 503) from error
+    latest = {}
+    for model_key, metadata in metadata_by_model.items():
+        version = metadata.get("trained_at", "unknown")
+        snapshot = ModelMetric.query.filter_by(model_key=model_key, model_version=version).first()
+        if snapshot is None:
+            snapshot = ModelMetric(
+                model_key=model_key,
+                model_version=version,
+                precision=metadata["precision"],
+                recall=metadata["recall"],
+                f1=metadata["f1"],
+                roc_auc=metadata["roc_auc"],
+                dataset_size=metadata.get("dataset_size"),
+                test_size=metadata.get("test_size"),
+            )
+            db.session.add(snapshot)
+            db.session.flush()
+        latest[model_key] = snapshot.to_dict()
+    db.session.commit()
+    history = {
+        model_key: [metric.to_dict() for metric in ModelMetric.query.filter_by(model_key=model_key).order_by(ModelMetric.evaluated_at.desc()).all()]
+        for model_key in metadata_by_model
+    }
+    return {"latest": latest, "history": history}
+
+
 def get_fairness_report() -> dict:
     _require_ml()
     try:
