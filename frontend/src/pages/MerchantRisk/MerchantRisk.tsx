@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { merchantApi } from '../../services/api';
-import type { FraudCheckResult, MerchantAssessment, MerchantTransactionDay, MerchantTransactionFeatures } from '../../types';
+import type { FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures } from '../../types';
 import ContributionBarChart from '../../components/charts/ContributionBarChart';
 import PlainEnglishCard from '../../components/explanations/PlainEnglishCard';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -41,6 +41,7 @@ export default function MerchantRisk() {
   const [values, setValues] = useState(initialValues);
   const [assessment, setAssessment] = useState<MerchantAssessment | null>(null);
   const [fraud, setFraud] = useState<FraudCheckResult | null>(null);
+  const [tierGaps, setTierGaps] = useState<MerchantTierGaps | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,11 +50,12 @@ export default function MerchantRisk() {
     setError(null); setLoading(true);
     try {
       const transactionHistory = buildDemoHistory(values);
-      const [result, fraudResult] = await Promise.all([
+      const [result, fraudResult, tierResult] = await Promise.all([
         merchantApi.assess({ ...values, merchant_id: merchantId, transaction_history: transactionHistory }),
         merchantApi.fraudCheck(merchantId, transactionHistory),
+        merchantApi.tierGaps(merchantId, values),
       ]);
-      setAssessment(result); setFraud(fraudResult);
+      setAssessment(result); setFraud(fraudResult); setTierGaps(tierResult);
     }
     catch (requestError: any) { setError(requestError?.response?.data?.error ?? 'Could not assess this merchant.'); }
     finally { setLoading(false); }
@@ -68,6 +70,7 @@ export default function MerchantRisk() {
     </form>
     {assessment && <section className="space-y-4">
       {fraud && fraud.fraud_score >= 0.5 && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><strong>Fraud-pattern warning:</strong> rule-based checks flagged abnormal transaction behavior ({Math.round(fraud.fraud_score * 100)} / 100). Review the flagged days and signals before relying on this assessment.</div>}
+      {tierGaps && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm font-medium text-sky-700">Illustrative Capital tier fit</p><h2 className="mt-1 text-lg font-semibold text-slate-800">{tierGaps.current_tier ?? 'Not yet eligible'}</h2><p className="mt-1 text-xs text-slate-500">{tierGaps.disclaimer}</p>{tierGaps.next_tier_gap && <div className="mt-4 rounded-lg bg-slate-50 p-4"><p className="text-sm font-semibold text-slate-700">Gap to {tierGaps.next_tier}</p><p className="mt-1 text-sm text-slate-600">{tierGaps.next_tier_gap.overall_message}</p><ul className="mt-3 space-y-2">{tierGaps.next_tier_gap.gaps.map((gap) => <li key={gap.feature} className="text-sm text-slate-600">{gap.human_message}</li>)}</ul></div>}</div>}
       <div className={`rounded-xl border p-5 ${assessment.prediction.risk_level === 'HIGH' ? 'border-red-200 bg-red-50' : assessment.prediction.risk_level === 'MEDIUM' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}><p className="text-sm font-medium text-slate-600">Synthetic transaction model result</p><div className="mt-1 flex flex-wrap items-baseline gap-3"><h2 className="text-2xl font-bold text-slate-900">{assessment.prediction.prediction.replace('_', ' ')}</h2><span className="text-sm text-slate-600">Risk score {assessment.prediction.risk_score}/100</span></div><p className="mt-2 text-sm text-slate-600">Estimated high-risk probability: <strong>{(assessment.prediction.probability * 100).toFixed(1)}%</strong></p><p className="mt-3 text-xs text-slate-500">{assessment.disclaimer}</p></div>
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold text-slate-800">Why this result?</h2><div className="mt-3"><PlainEnglishCard text={assessment.shap.plain_english} /></div><div className="mt-4"><ContributionBarChart contributions={assessment.shap.contributions} /></div></div>
       {fraud && <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold text-slate-800">Daily transaction signals</h2><p className="mt-1 text-xs text-slate-500">Simulated daily history for demo visualization. Red bars mark days flagged by transparent fraud rules.</p><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={buildDemoHistory(values)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Bar dataKey="order_count">{buildDemoHistory(values).map((day) => <Cell key={day.date} fill={fraud.flagged_days.includes(day.date) ? '#dc2626' : '#0284c7'} />)}</Bar></BarChart></ResponsiveContainer></div><div className="mt-4 space-y-2">{fraud.flags.length ? fraud.flags.map((flag) => <p key={flag} className="text-sm text-slate-700">{flag}</p>) : <p className="text-sm text-slate-500">No transparent fraud-pattern rules were triggered.</p>}</div></div>}

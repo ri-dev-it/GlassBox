@@ -81,6 +81,39 @@ export interface FraudCheckResult {
   flagged_days: string[];
 }
 
+export interface TierGap {
+  feature: string;
+  current_value: number;
+  required_value: number;
+  delta: number;
+  direction: 'increase' | 'decrease';
+  human_message: string;
+}
+
+export interface TierEligibilityResult {
+  tier: string;
+  eligible: boolean;
+  gaps: TierGap[];
+  overall_message: string;
+}
+
+export interface MerchantTierGaps {
+  merchant_id: string;
+  current_tier: string | null;
+  next_tier: string | null;
+  next_tier_gap: TierEligibilityResult | null;
+  tiers: TierEligibilityResult[];
+  disclaimer: string;
+}
+
+export interface PortfolioExposure {
+  tier_summary: Array<{ tier: string; merchant_count: number; estimated_exposure: number }>;
+  blocking_signals: Array<{ feature: string; merchant_count: number }>;
+  total_merchants: number;
+  total_estimated_exposure: number;
+  disclaimer: string;
+}
+
 export interface ComparisonResult {
   agreement: Array<{
     feature: string;

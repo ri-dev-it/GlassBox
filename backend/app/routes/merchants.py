@@ -27,3 +27,13 @@ def fraud_check():
     except MLServiceError as error:
         return jsonify({"error": error.message}), error.status_code
     return jsonify(result), 200
+
+
+@merchants_bp.get("/merchants/<merchant_id>/tier-gaps")
+@roles_required("applicant", "loan_officer", "admin")
+def tier_gaps(merchant_id):
+    try:
+        supplied_features = request.args.to_dict()
+        return jsonify(ml_service.get_merchant_tier_gaps(merchant_id, supplied_features or None)), 200
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code

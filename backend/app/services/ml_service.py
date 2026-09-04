@@ -231,3 +231,92 @@ def check_merchant_fraud(merchant_id: str, transaction_history: list[dict]) -> d
         raise MLServiceError(f"Each transaction history record must contain {sorted(required_fields)} (invalid rows: {invalid}).", 400)
     from fraud.pattern_detector import detect_fraud_signals
     return {"merchant_id": merchant_id, **detect_fraud_signals(transaction_history)}
+
+
+def _transaction_portfolio() -> tuple[list, list[str]]:
+    _require_ml()
+    from data.synthetic_transactions import TRANSACTION_FEATURES, generate_synthetic_transactions
+    return generate_synthetic_transactions(), TRANSACTION_FEATURES
+
+
+def _merchant_features(merchant_id: str) -> dict:
+    data, feature_columns = _transaction_portfolio()
+    try:
+        row_index = int(str(merchant_id).rsplit("-", 1)[-1]) % len(data)
+    except ValueError:
+        row_index = sum(ord(char) for char in str(merchant_id)) % len(data)
+    return data.iloc[row_index][feature_columns].to_dict()
+
+
+def _serialize_tier_result(result) -> dict:
+    return {
+        "tier": result.tier,
+        "eligible": result.eligible,
+        "gaps": [gap.__dict__ for gap in result.gaps],
+        "overall_message": result.overall_message,
+    }
+
+
+def get_merchant_tier_gaps(merchant_id: str, supplied_features: dict | None = None) -> dict:
+    _require_ml()
+    from data.synthetic_transactions import TRANSACTION_FEATURES
+    from eligibility.gap_calculator import CAPITAL_TIER_CRITERIA, rank_all_tiers
+
+    if supplied_features is not None and any(feature not in supplied_features for feature in TRANSACTION_FEATURES):
+        raise MLServiceError("Tier-gap evaluation requires all transaction feature query parameters.", 400)
+    features = supplied_features or _merchant_features(merchant_id)
+    for feature in TRANSACTION_FEATURES if supplied_features else []:
+        features[feature] = float(features[feature])
+    ranked = rank_all_tiers(features)
+    eligible = [result for result in ranked if result.eligible]
+    eligible_names = {result.tier for result in eligible}
+    current_index = max((index for index, tier in enumerate(CAPITAL_TIER_CRITERIA) if tier["name"] in eligible_names), default=-1)
+    current_tier = CAPITAL_TIER_CRITERIA[current_index]["name"] if current_index >= 0 else None
+    next_tier = CAPITAL_TIER_CRITERIA[current_index + 1] if current_index + 1 < len(CAPITAL_TIER_CRITERIA) else None
+    next_result = next((result for result in ranked if next_tier and result.tier == next_tier["name"]), None)
+    return {
+        "merchant_id": merchant_id,
+        "features": features,
+        "current_tier": current_tier,
+        "next_tier": next_tier["name"] if next_tier else None,
+        "next_tier_gap": _serialize_tier_result(next_result) if next_result else None,
+        "tiers": [_serialize_tier_result(result) for result in ranked],
+        "disclaimer": "Capital tier thresholds are illustrative simulated values for this demo, not real Razorpay Capital policy.",
+    }
+
+
+def get_portfolio_exposure() -> dict:
+    _require_ml()
+    from collections import Counter
+    from eligibility.gap_calculator import CAPITAL_TIER_CRITERIA, rank_all_tiers
+
+    data, feature_columns = _transaction_portfolio()
+    tier_counts = Counter()
+    blocker_counts = Counter()
+    for _, row in data.iterrows():
+        features = row[feature_columns].to_dict()
+        eligible_results = rank_all_tiers(features)
+        eligible_names = {result.tier for result in eligible_results if result.eligible}
+        current_index = max((index for index, tier in enumerate(CAPITAL_TIER_CRITERIA) if tier["name"] in eligible_names), default=-1)
+        current_name = CAPITAL_TIER_CRITERIA[current_index]["name"] if current_index >= 0 else "Not yet eligible"
+        tier_counts[current_name] += 1
+        if current_index + 1 < len(CAPITAL_TIER_CRITERIA):
+            next_result = next(result for result in eligible_results if result.tier == CAPITAL_TIER_CRITERIA[current_index + 1]["name"])
+            for gap in next_result.gaps:
+                blocker_counts[gap.feature] += 1
+
+    tier_summary = []
+    exposure_by_tier = {"Not yet eligible": 0}
+    for tier in CAPITAL_TIER_CRITERIA:
+        count = tier_counts[tier["name"]]
+        exposure = count * tier["estimated_exposure"]
+        exposure_by_tier[tier["name"]] = exposure
+        tier_summary.append({"tier": tier["name"], "merchant_count": count, "estimated_exposure": exposure})
+    tier_summary.append({"tier": "Not yet eligible", "merchant_count": tier_counts["Not yet eligible"], "estimated_exposure": 0})
+    return {
+        "tier_summary": tier_summary,
+        "blocking_signals": [{"feature": feature, "merchant_count": count} for feature, count in blocker_counts.most_common()],
+        "total_merchants": len(data),
+        "total_estimated_exposure": sum(exposure_by_tier.values()),
+        "disclaimer": "Merchant data, tier thresholds, and exposure amounts are synthetic illustrative demo values, not real Razorpay Capital policy.",
+    }

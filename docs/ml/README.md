@@ -26,6 +26,15 @@ refund spikes, seven-day chargeback clusters, order-velocity anomalies, and
 sharp GMV increases followed by elevated refunds. The score is a bounded
 review signal, not proof of fraud and not a real-time Razorpay policy result.
 
+## Illustrative Capital tiers and portfolio exposure
+
+`ml/eligibility/gap_calculator.py` ranks merchants against simulated
+`Starter Advance`, `Growth Capital`, and `Scale Capital` criteria. The
+thresholds, tier names, and fixed exposure amounts are illustrative demo
+values only, not Razorpay Capital policy. Merchant tier gaps are available at
+`GET /api/merchants/<merchant_id>/tier-gaps`; portfolio aggregation is at
+`GET /api/portfolio/exposure` and uses the synthetic Prompt 1 merchant data.
+
 `train.py` trains Logistic Regression (baseline) and XGBoost (falls back
 to RandomForest if xgboost isn't installed), evaluates both on the same
 held-out test set (accuracy, precision, recall, F1, ROC-AUC, confusion

@@ -4,7 +4,7 @@ import type {
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
-  DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTransactionDay, MerchantTransactionFeatures,
+  DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTierGaps, MerchantTransactionDay, MerchantTransactionFeatures, PortfolioExposure,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -80,6 +80,11 @@ export const merchantApi = {
     api.post<MerchantAssessment>('/merchants/assess', features).then((r) => r.data),
   fraudCheck: (merchant_id: string, transaction_history: MerchantTransactionDay[]) =>
     api.post<FraudCheckResult>('/merchants/fraud-check', { merchant_id, transaction_history }).then((r) => r.data),
+  tierGaps: (merchantId: string, features?: MerchantTransactionFeatures) => api.get<MerchantTierGaps>(`/merchants/${encodeURIComponent(merchantId)}/tier-gaps`, { params: features }).then((r) => r.data),
+};
+
+export const portfolioApi = {
+  exposure: () => api.get<PortfolioExposure>('/portfolio/exposure').then((r) => r.data),
 };
 
 export const analyticsApi = {
