@@ -20,15 +20,15 @@ from preprocessing.feature_config import NUMERIC_FEATURES, CATEGORICAL_FEATURES,
 FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
 
-def _build_explainer(training_df: pd.DataFrame) -> LimeTabularExplainer:
-    df = training_df[FEATURE_COLUMNS].copy()
+def _build_explainer(training_df: pd.DataFrame, feature_columns: list[str], categorical_features: list[str], class_names: list[str]):
+    df = training_df[feature_columns].copy()
 
     # LIME needs categorical columns as integer-coded with a category map.
     categorical_indices = []
     category_maps = {}
     encoded = df.copy()
-    for i, col in enumerate(FEATURE_COLUMNS):
-        if col in CATEGORICAL_FEATURES:
+    for i, col in enumerate(feature_columns):
+        if col in categorical_features:
             categories = sorted(df[col].astype(str).unique())
             category_maps[i] = categories
             categorical_indices.append(i)
@@ -36,28 +36,36 @@ def _build_explainer(training_df: pd.DataFrame) -> LimeTabularExplainer:
 
     explainer = LimeTabularExplainer(
         training_data=encoded.values,
-        feature_names=FEATURE_COLUMNS,
+        feature_names=feature_columns,
         categorical_features=categorical_indices,
         categorical_names=category_maps,
-        class_names=["REJECTED", "APPROVED"],
+        class_names=class_names,
         mode="classification",
         discretize_continuous=True,
     )
     return explainer, category_maps
 
 
-def local_lime_explanation(pipeline, applicant_df: pd.DataFrame, training_df: pd.DataFrame, num_features: int = 10) -> list[dict]:
+def local_lime_explanation(pipeline, applicant_df: pd.DataFrame, training_df: pd.DataFrame, num_features: int = 10,
+                           feature_columns: list[str] | None = None, categorical_features: list[str] | None = None,
+                           label_for_fn=None, class_names: list[str] | None = None) -> list[dict]:
     """
     Returns per-feature contributions for ONE applicant in the same shape
     as local_shap_explanation, so the frontend/comparison module can
     treat them uniformly.
     """
-    explainer, category_maps = _build_explainer(training_df)
+    feature_columns = feature_columns or FEATURE_COLUMNS
+    categorical_features = categorical_features or CATEGORICAL_FEATURES
+    label_for_fn = label_for_fn or label_for
+    explainer, category_maps = _build_explainer(
+        training_df, feature_columns, categorical_features,
+        class_names or ["REJECTED", "APPROVED"],
+    )
 
     def predict_fn(encoded_rows: np.ndarray) -> np.ndarray:
-        decoded = pd.DataFrame(encoded_rows, columns=FEATURE_COLUMNS)
-        for i, col in enumerate(FEATURE_COLUMNS):
-            if col in CATEGORICAL_FEATURES:
+        decoded = pd.DataFrame(encoded_rows, columns=feature_columns)
+        for i, col in enumerate(feature_columns):
+            if col in categorical_features:
                 categories = category_maps[i]
                 decoded[col] = decoded[col].round().astype(int).clip(0, len(categories) - 1).apply(lambda idx: categories[idx])
             else:
@@ -65,10 +73,10 @@ def local_lime_explanation(pipeline, applicant_df: pd.DataFrame, training_df: pd
         return pipeline.predict_proba(decoded)
 
     # Encode the single applicant row the same way as the training data.
-    row = applicant_df[FEATURE_COLUMNS].iloc[0].copy()
+    row = applicant_df[feature_columns].iloc[0].copy()
     encoded_row = []
-    for i, col in enumerate(FEATURE_COLUMNS):
-        if col in CATEGORICAL_FEATURES:
+    for i, col in enumerate(feature_columns):
+        if col in categorical_features:
             categories = category_maps[i]
             value = str(row[col])
             encoded_row.append(categories.index(value) if value in categories else 0)
@@ -85,10 +93,10 @@ def local_lime_explanation(pipeline, applicant_df: pd.DataFrame, training_df: pd
     # to our feature columns by matching the LIME-generated feature index map.
     results = []
     for feature_idx, weight in explanation.local_exp[1]:
-        col = FEATURE_COLUMNS[feature_idx]
+        col = feature_columns[feature_idx]
         results.append({
             "feature": col,
-            "label": label_for(col),
+            "label": label_for_fn(col),
             "value": applicant_df.iloc[0][col],
             "contribution": round(float(weight), 4),
             "direction": "positive" if weight >= 0 else "negative",

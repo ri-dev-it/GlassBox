@@ -124,6 +124,10 @@ def main():
     # --- Save metadata ---
     metadata = {
         "final_model": winner_name,
+        "precision": results[winner_name]["precision"],
+        "recall": results[winner_name]["recall"],
+        "f1": results[winner_name]["f1"],
+        "roc_auc": results[winner_name]["roc_auc"],
         "trained_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "dataset_size": len(df),
         "train_size": len(X_train),

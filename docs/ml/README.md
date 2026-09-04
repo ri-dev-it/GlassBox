@@ -12,6 +12,12 @@ python data/download_dataset.py   # fetch + label the real dataset (needs intern
 python training/train.py          # train, compare, select, save
 ```
 
+## Synthetic merchant model
+
+The additive merchant-risk path is trained with `python training/train_transaction_model.py`.
+Its transaction features and labels are synthetic, simulated demo data only; they are not
+real Razorpay merchant data and must not be treated as confirmed underwriting policy.
+
 `train.py` trains Logistic Regression (baseline) and XGBoost (falls back
 to RandomForest if xgboost isn't installed), evaluates both on the same
 held-out test set (accuracy, precision, recall, F1, ROC-AUC, confusion

@@ -4,7 +4,7 @@ import type {
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
-  DocumentRecord, DocumentType,
+  DocumentRecord, DocumentType, MerchantAssessment, MerchantTransactionFeatures,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -73,6 +73,11 @@ export const explanationApi = {
     api.post<{ prediction: unknown } & ExplanationResult>('/explain/lime', features).then((r) => r.data),
   counterfactual: (features: ApplicantFeatures) =>
     api.post<CounterfactualResult>('/explain/counterfactual', features).then((r) => r.data),
+};
+
+export const merchantApi = {
+  assess: (features: MerchantTransactionFeatures) =>
+    api.post<MerchantAssessment>('/merchants/assess', features).then((r) => r.data),
 };
 
 export const analyticsApi = {

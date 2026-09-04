@@ -15,6 +15,7 @@ import Insights from '../pages/Insights/Insights';
 import Settings from '../pages/Settings/Settings';
 import About from '../pages/About/About';
 import Placeholder from '../pages/Placeholder/Placeholder';
+import MerchantRisk from '../pages/MerchantRisk/MerchantRisk';
 
 export default function AppRoutes() {
   return (
@@ -25,6 +26,7 @@ export default function AppRoutes() {
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
         <Route path="/register" element={<Register />} />
         <Route path="/apply" element={<ProtectedRoute><Application /></ProtectedRoute>} />
+        <Route path="/merchant-risk" element={<ProtectedRoute><MerchantRisk /></ProtectedRoute>} />
         <Route path="/results/:id" element={<ProtectedRoute><Results /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

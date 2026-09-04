@@ -42,6 +42,29 @@ export interface ExplanationResult {
   plain_english: string;
 }
 
+export interface MerchantTransactionFeatures {
+  gmv_trend_30d: number;
+  gmv_trend_90d: number;
+  payment_success_rate: number;
+  refund_rate: number;
+  chargeback_rate: number;
+  customer_concentration: number;
+  order_volume_volatility: number;
+  account_age_days: number;
+}
+
+export interface MerchantAssessment {
+  prediction: {
+    prediction: 'HIGH_RISK' | 'LOW_RISK';
+    probability: number;
+    risk_score: number;
+    risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
+    model_name: string;
+  };
+  shap: ExplanationResult;
+  disclaimer: string;
+}
+
 export interface ComparisonResult {
   agreement: Array<{
     feature: string;
@@ -121,6 +144,10 @@ export interface BankEligibilityResult { bankName: string; decision: 'APPROVED' 
 
 export interface ModelMetadata {
   final_model: string;
+  precision: number;
+  recall: number;
+  f1: number;
+  roc_auc: number;
   trained_at: string;
   dataset_size: number;
   train_size: number;

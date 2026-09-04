@@ -60,6 +60,19 @@ export default function Admin() {
           {metadata && (
             <div className="rounded-lg border border-slate-200 bg-white p-4">
               <h2 className="font-medium text-slate-800 mb-3">Model Performance ({metadata.final_model})</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                {[
+                  ['Precision', metadata.precision, 'Of applications we approved, what fraction were actually good loans'],
+                  ['Recall', metadata.recall, 'Of actually good loans, what fraction did we approve'],
+                  ['F1 Score', metadata.f1, 'A balance between precision and recall'],
+                  ['ROC-AUC', metadata.roc_auc, 'How well the model separates good and risky loans'],
+                ].map(([label, value, description]) => (
+                  <div key={label} title={description} className="rounded-md bg-slate-50 p-3">
+                    <p className="text-xs font-medium text-slate-500">{label}</p>
+                    <p className="mt-1 text-xl font-semibold text-brand-900">{Number(value).toFixed(3)}</p>
+                  </div>
+                ))}
+              </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 {Object.entries(metadata.model_comparison).map(([name, m]) => (
                   <div key={name} className="text-sm">

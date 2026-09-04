@@ -32,6 +32,7 @@ def _require_ml() -> None:
     global local_shap_explanation, global_shap_importance, local_lime_explanation
     global generate_summary, compare_explanations, generate_counterfactual
     global run_fairness_analysis, RAW_DATA_FILE, model_value_to_indian_display
+    global predict_transaction, load_transaction_pipeline, load_transaction_reference, TransactionModelNotTrainedError
 
     if _ML_READY:
         return
@@ -41,6 +42,10 @@ def _require_ml() -> None:
         if _ML_ROOT not in sys.path:
             sys.path.insert(0, _ML_ROOT)
         from prediction.predictor import predict as predict_module, load_pipeline as pipeline_loader, load_metadata as metadata_loader, ModelNotTrainedError as not_trained_error
+        from prediction.transaction_predictor import (predict_transaction as transaction_predictor,
+                                   load_transaction_pipeline as transaction_pipeline_loader,
+                                   load_transaction_reference as transaction_reference_loader,
+                                   TransactionModelNotTrainedError as transaction_not_trained_error)
         from explainability.shap_explainer import local_shap_explanation as shap_local, global_shap_importance as shap_global
         from explainability.lime_explainer import local_lime_explanation as lime_local
         from explainability.explanation_engine import generate_summary as summary_generator
@@ -57,6 +62,10 @@ def _require_ml() -> None:
     pd = pd_module
     ml_predict, load_pipeline, load_metadata = predict_module, pipeline_loader, metadata_loader
     ModelNotTrainedError = not_trained_error
+    predict_transaction = transaction_predictor
+    load_transaction_pipeline = transaction_pipeline_loader
+    load_transaction_reference = transaction_reference_loader
+    TransactionModelNotTrainedError = transaction_not_trained_error
     local_shap_explanation, global_shap_importance = shap_local, shap_global
     local_lime_explanation, generate_summary = lime_local, summary_generator
     compare_explanations, generate_counterfactual = explanation_comparer, counterfactual_generator
@@ -148,4 +157,54 @@ def get_fairness_report() -> dict:
     try:
         return run_fairness_analysis()
     except FileNotFoundError as e:
+        raise MLServiceError(str(e), 503)
+
+
+def assess_merchant(features: dict) -> dict:
+    _require_ml()
+    try:
+        from data.synthetic_transactions import TRANSACTION_FEATURES, TRANSACTION_LABELS, TRANSACTION_RANGES
+        from prediction.transaction_predictor import transaction_to_dataframe
+
+        errors = []
+        for feature in TRANSACTION_FEATURES:
+            if feature not in features or features[feature] in (None, ""):
+                errors.append(f"'{feature}' is required.")
+                continue
+            try:
+                features[feature] = float(features[feature])
+            except (TypeError, ValueError):
+                errors.append(f"'{feature}' must be a number.")
+                continue
+            minimum, maximum = TRANSACTION_RANGES[feature]
+            if not minimum <= features[feature] <= maximum:
+                errors.append(f"'{feature}' must be between {minimum} and {maximum}.")
+        if errors:
+            raise MLServiceError("Invalid transaction features: " + " ".join(errors), 400)
+
+        result = predict_transaction(features)
+        pipeline = load_transaction_pipeline()
+        applicant_df = transaction_to_dataframe(features)
+        reference_df = load_transaction_reference()
+        labels = lambda feature: TRANSACTION_LABELS[feature]
+        contributions = local_shap_explanation(
+            pipeline, applicant_df, reference_df,
+            feature_columns=TRANSACTION_FEATURES, label_for_fn=labels,
+        )
+        summary = generate_summary(
+            contributions, result["prediction"], result["probability"],
+            positive_direction="toward higher risk", negative_direction="toward lower risk",
+            positive_prediction="HIGH_RISK",
+        )
+        return {
+            "prediction": {
+                **result,
+                "risk_score": round(result["probability"] * 100),
+                "risk_level": "HIGH" if result["probability"] >= 0.66 else "MEDIUM" if result["probability"] >= 0.33 else "LOW",
+                "model_name": "synthetic_transaction_model",
+            },
+            "shap": {"contributions": contributions, "plain_english": summary},
+            "disclaimer": "This assessment uses synthetic transaction data for demo purposes, not real Razorpay merchant data or policy.",
+        }
+    except TransactionModelNotTrainedError as e:
         raise MLServiceError(str(e), 503)

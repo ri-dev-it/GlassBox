@@ -22,19 +22,22 @@ from config import TARGET_COLUMN  # noqa: E402
 FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
 
-def _build_dice(pipeline, reference_df: pd.DataFrame):
-    data_for_dice = reference_df[FEATURE_COLUMNS + [TARGET_COLUMN]].copy()
+def _build_dice(pipeline, reference_df: pd.DataFrame, feature_columns: list[str], continuous_features: list[str], target_column: str):
+    data_for_dice = reference_df[feature_columns + [target_column]].copy()
 
     dice_data = dice_ml.Data(
         dataframe=data_for_dice,
-        continuous_features=NUMERIC_FEATURES,
-        outcome_name=TARGET_COLUMN,
+        continuous_features=continuous_features,
+        outcome_name=target_column,
     )
     dice_model = dice_ml.Model(model=pipeline, backend="sklearn")
     return dice_ml.Dice(dice_data, dice_model, method="random")
 
 
-def generate_counterfactual(pipeline, applicant_df: pd.DataFrame, reference_df: pd.DataFrame, total_cfs: int = 3) -> dict:
+def generate_counterfactual(pipeline, applicant_df: pd.DataFrame, reference_df: pd.DataFrame, total_cfs: int = 3,
+                            feature_columns: list[str] | None = None, continuous_features: list[str] | None = None,
+                            mutable_features: list[str] | None = None, target_column: str | None = None,
+                            label_for_fn=None) -> dict:
     """
     Returns:
         {
@@ -47,12 +50,17 @@ def generate_counterfactual(pipeline, applicant_df: pd.DataFrame, reference_df: 
         }
     """
     try:
-        dice_explainer = _build_dice(pipeline, reference_df)
+        feature_columns = feature_columns or FEATURE_COLUMNS
+        continuous_features = continuous_features or NUMERIC_FEATURES
+        mutable_features = mutable_features or MUTABLE_FEATURES
+        target_column = target_column or TARGET_COLUMN
+        label_for_fn = label_for_fn or label_for
+        dice_explainer = _build_dice(pipeline, reference_df, feature_columns, continuous_features, target_column)
         cf = dice_explainer.generate_counterfactuals(
-            applicant_df[FEATURE_COLUMNS],
+            applicant_df[feature_columns],
             total_CFs=total_cfs,
             desired_class="opposite",
-            features_to_vary=MUTABLE_FEATURES,
+            features_to_vary=mutable_features,
         )
         cf_df = cf.cf_examples_list[0].final_cfs_df
 
@@ -60,20 +68,20 @@ def generate_counterfactual(pipeline, applicant_df: pd.DataFrame, reference_df: 
             return {
                 "found": False,
                 "message": "No plausible counterfactual was found within the allowed (mutable, realistic) feature ranges.",
-                "current_profile": applicant_df.iloc[0][FEATURE_COLUMNS].to_dict(),
+                "current_profile": applicant_df.iloc[0][feature_columns].to_dict(),
                 "alternatives": [],
             }
 
-        original = applicant_df.iloc[0][FEATURE_COLUMNS]
+        original = applicant_df.iloc[0][feature_columns]
         alternatives = []
         for _, cf_row in cf_df.iterrows():
             changed = {}
-            for col in FEATURE_COLUMNS:
+            for col in feature_columns:
                 orig_val = original[col]
                 new_val = cf_row[col]
                 if str(orig_val) != str(new_val):
                     changed[col] = {
-                        "label": label_for(col),
+                        "label": label_for_fn(col),
                         "current": orig_val,
                         "suggested": new_val,
                     }
@@ -95,6 +103,6 @@ def generate_counterfactual(pipeline, applicant_df: pd.DataFrame, reference_df: 
         return {
             "found": False,
             "message": f"Counterfactual generation failed: {exc}",
-            "current_profile": applicant_df.iloc[0][FEATURE_COLUMNS].to_dict(),
+            "current_profile": applicant_df.iloc[0][feature_columns].to_dict(),
             "alternatives": [],
         }

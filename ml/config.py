@@ -15,6 +15,9 @@ TEST_SET_WITH_PREDICTIONS = os.path.join(DATA_PROCESSED_DIR, "test_with_predicti
 
 MODEL_FILE = os.path.join(MODEL_DIR, "model.joblib")
 METADATA_FILE = os.path.join(MODEL_DIR, "metadata.json")
+TRANSACTION_MODEL_FILE = os.path.join(MODEL_DIR, "transaction_model.joblib")
+TRANSACTION_METADATA_FILE = os.path.join(MODEL_DIR, "transaction_model_metadata.json")
+TRANSACTION_REFERENCE_FILE = os.path.join(DATA_PROCESSED_DIR, "synthetic_transactions.csv")
 
 TARGET_COLUMN = "credit_risk"          # 1 = good credit (approve), 0 = bad credit (reject)
 RANDOM_STATE = 42

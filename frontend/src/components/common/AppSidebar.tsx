@@ -1,10 +1,10 @@
-import { BarChart3, Brain, CircleHelp, ClipboardCheck, FilePlus2, FileText, History, Home, LogOut, Settings, ShieldAlert, X } from 'lucide-react';
+import { BarChart3, Brain, CircleHelp, ClipboardCheck, FilePlus2, FileText, History, Home, LogOut, Settings, ShieldAlert, Store, X } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const navigation = [
   { group: 'Main', links: [{ to: '/', label: 'Dashboard', icon: Home }, { to: '/apply', label: 'New Application', icon: FilePlus2 }, { to: '/status', label: 'Application Status', icon: ClipboardCheck }, { to: '/history', label: 'Application History', icon: History }, { to: '/insights', label: 'AI Insights', icon: Brain }] },
-  { group: 'Analytics', links: [{ to: '/analytics', label: 'Credit Analytics', icon: BarChart3 }, { to: '/risk-analysis', label: 'Risk Analysis', icon: ShieldAlert }, { to: '/reports', label: 'Reports', icon: FileText }] },
+  { group: 'Analytics', links: [{ to: '/analytics', label: 'Credit Analytics', icon: BarChart3 }, { to: '/merchant-risk', label: 'Merchant Risk', icon: Store }, { to: '/risk-analysis', label: 'Risk Analysis', icon: ShieldAlert }, { to: '/reports', label: 'Reports', icon: FileText }] },
   { group: 'System', links: [{ to: '/settings', label: 'Settings', icon: Settings }, { to: '/about', label: 'Help & About', icon: CircleHelp }] },
 ];
 
