@@ -12,7 +12,6 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsk": "reactjsk",
 
     "strict": true,
     "noUnusedLocals": true,

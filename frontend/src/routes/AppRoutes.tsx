@@ -14,9 +14,11 @@ import Status from '../pages/Status/Status';
 import Insights from '../pages/Insights/Insights';
 import Settings from '../pages/Settings/Settings';
 import About from '../pages/About/About';
-import Placeholder from '../pages/Placeholder/Placeholder';
 import MerchantRisk from '../pages/MerchantRisk/MerchantRisk';
 import Portfolio from '../pages/Portfolio/Portfolio';
+import RiskAnalysis from '../pages/RiskAnalysis/RiskAnalysis';
+import CreditAnalytics from '../pages/Analytics/CreditAnalytics';
+import Reports from '../pages/Reports/Reports';
 
 export default function AppRoutes() {
   return (
@@ -36,9 +38,9 @@ export default function AppRoutes() {
         <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute><Placeholder title="Credit Analytics" description="Credit analytics will use recorded applications and the real model metadata." /></ProtectedRoute>} />
-        <Route path="/risk-analysis" element={<ProtectedRoute><Placeholder title="Risk Analysis" description="Risk analysis will summarize the AI-derived risk levels from stored applications." /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Placeholder title="Reports" description="Reports are available from each completed assessment to ensure they contain real prediction and explanation data." /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><CreditAnalytics /></ProtectedRoute>} />
+        <Route path="/risk-analysis" element={<ProtectedRoute><RiskAnalysis /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route
           path="/admin"
           element={

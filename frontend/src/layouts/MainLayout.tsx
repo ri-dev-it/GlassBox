@@ -1,17 +1,19 @@
 import { Outlet } from 'react-router-dom';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import AppSidebar from '../components/common/AppSidebar';
+import { useTheme } from '../hooks/useTheme';
 
 export default function MainLayout() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
+    <div className="min-h-screen bg-page">
       <AppSidebar open={open} onClose={() => setOpen(false)} />
       <main className={user ? 'lg:pl-72' : ''}>
-        {user && <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-7"><button onClick={() => setOpen(true)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Open navigation"><Menu size={20} /></button><div className="hidden sm:block"><p className="text-sm font-medium text-slate-800">Indian Explainable AI Loan Credit System</p><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date())}</p></div><button aria-label="Notifications" className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100"><Bell size={20} /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-sky-500" /></button></header>}
+        {user && <header className="app-header"><button onClick={() => setOpen(true)} className="icon-button lg:hidden" aria-label="Open navigation"><Menu size={20} /></button><div className="hidden sm:block"><p className="eyebrow">GlassBox / decision workspace</p><p className="header-date">{new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date())}</p></div><div className="header-actions"><button onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} className="icon-button">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button><button aria-label="Notifications" className="icon-button relative"><Bell size={19} /><span className="notification-dot" /></button></div></header>}
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-7 sm:py-8">
         <Outlet />
       </div></main>
