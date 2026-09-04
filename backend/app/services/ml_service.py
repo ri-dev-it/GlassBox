@@ -272,7 +272,7 @@ def assess_merchant(features: dict) -> dict:
             "prediction": {
                 **result,
                 "risk_score": round(result["probability"] * 100),
-                "risk_level": "HIGH" if result["probability"] >= 0.66 else "MEDIUM" if result["probability"] >= 0.33 else "LOW",
+                "risk_level": {"APPROVE": "LOW", "REVIEW": "MEDIUM", "DECLINE": "HIGH"}[result["prediction"]],
                 "model_name": "synthetic_transaction_model",
             },
             "shap": {"contributions": contributions, "plain_english": summary},

@@ -17,7 +17,7 @@ require `Authorization: Bearer <jwt>`.
 
 | Method | Path | Access | Description |
 |---|---|---|---|
-| POST | `/predict` | any | Submits an application; runs prediction + SHAP + LIME + counterfactual; persists everything. |
+| POST | `/predict` | any | Submits an application; returns a three-band `APPROVE`/`REVIEW`/`DECLINE` decision plus explanations and persists everything. |
 | GET | `/applications` | any | Applicants see their own; staff see all. |
 | GET | `/applications/:id` | any | Full detail (prediction, both explanations, comparison, counterfactual). Applicants can only view their own. |
 

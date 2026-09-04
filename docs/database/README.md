@@ -14,7 +14,7 @@ in `database/schema.sql`; in normal development, use Flask-Migrate:
 - **applicants** -- one per user; kept separate from `users` so a future
   "apply on someone else's behalf" flow doesn't require restructuring.
 - **applications** -- raw submitted feature payload (JSON-encoded), one row per submission.
-- **predictions** -- decision + probability + which model produced it. 1:1 with application.
+- **predictions** -- three-band decision (`APPROVE`, `REVIEW`, or `DECLINE`) + probability + model. Legacy `APPROVED`/`REJECTED` values remain readable in historical rows.
 - **explanations** -- SHAP and LIME rows (method column), each with contributions (JSON) + plain-English text.
 - **counterfactuals** -- found/message/alternatives (JSON) per prediction.
 - **documents** and **document_verifications** -- uploaded document metadata and existing optional OCR-style review records.
@@ -32,6 +32,10 @@ The merchant risk tables are additive to the original loan schema. Apply the
 latest migration with `flask db upgrade`; `database/schema.sql` is also kept
 as a complete fresh-MySQL reference. Capital thresholds and exposure amounts
 are illustrative demo values, not real Razorpay Capital policy.
+
+The existing `predictions.decision` column is already a string (`VARCHAR(20)`),
+so no boolean-to-enum migration is required; new three-band values fit without
+rewriting historical records.
 
 ## First admin account
 

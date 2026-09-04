@@ -26,7 +26,7 @@ def explain_feature(feature_label: str, value, contribution: float, prediction: 
 
 def generate_summary(contributions: list[dict], prediction: str, probability: float, top_n: int = 5,
                      positive_direction: str = "toward approval", negative_direction: str = "toward rejection",
-                     positive_prediction: str = "APPROVED") -> str:
+                     positive_prediction: str = "APPROVE") -> str:
     """
     contributions: sorted list of {"label", "value", "contribution", ...}
     (as returned by shap_explainer.local_shap_explanation).

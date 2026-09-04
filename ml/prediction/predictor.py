@@ -14,6 +14,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import MODEL_FILE, METADATA_FILE  # noqa: E402
+from decisioning.bands import decide  # noqa: E402
 from preprocessing.feature_config import NUMERIC_FEATURES, CATEGORICAL_FEATURES  # noqa: E402
 
 FEATURE_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
@@ -64,9 +65,9 @@ def predict(applicant: dict) -> dict:
 
     proba = pipeline.predict_proba(X)[0]
     approved_probability = float(proba[1])  # class 1 = good credit / approve
-    prediction_label = "APPROVED" if approved_probability >= 0.5 else "REJECTED"
+    decision = decide(1 - approved_probability)
 
     return {
-        "prediction": prediction_label,
+        "prediction": decision,
         "probability": round(approved_probability, 4),
     }

@@ -49,7 +49,7 @@ def get_report(application_id: int, user) -> dict | None:
         "application_id": application.to_dict()["application_id"],
         "decision": prediction["decision"],
         "probability": prediction["probability"],
-        "confidence": round((prediction["probability"] if prediction["decision"] == "APPROVED" else 1 - prediction["probability"]) * 100, 1),
+        "confidence": round((prediction["probability"] if prediction["decision"] == "APPROVE" else 1 - prediction["probability"]) * 100, 1),
         "factors": shap_factors,
         "lime": {"summary": lime.plain_english, "factors": lime_factors},
         "risk": {"score": prediction["risk_score"], "level": prediction["risk_level"]},
@@ -76,7 +76,7 @@ def create_pdf(report: dict) -> BytesIO:
     heading = ParagraphStyle("ReportHeading", parent=styles["Heading2"], textColor=colors.HexColor("#0d3b70"), spaceBefore=12, spaceAfter=6)
     body = ParagraphStyle("ReportBody", parent=styles["BodyText"], leading=16, spaceAfter=6)
     story = [Paragraph("Loan Assessment Report", title), Paragraph(f"Application ID: {report['application_id']}", body)]
-    decision_color = "#177245" if report["decision"] == "APPROVED" else "#b42318"
+    decision_color = "#177245" if report["decision"] == "APPROVE" else "#b7791f" if report["decision"] == "REVIEW" else "#b42318"
     story += [Paragraph(f"Decision: <font color='{decision_color}'><b>{report['decision'].title()}</b></font>", heading)]
     story.append(Paragraph(f"Model probability of approval: <b>{report['probability'] * 100:.1f}%</b><br/>Confidence in this outcome: <b>{report['confidence']:.1f}%</b>", body))
     story.append(Paragraph("Top contributing factors", heading))

@@ -9,6 +9,7 @@ import pandas as pd
 
 from config import TRANSACTION_METADATA_FILE, TRANSACTION_MODEL_FILE, TRANSACTION_REFERENCE_FILE
 from data.synthetic_transactions import TRANSACTION_FEATURES
+from decisioning.bands import decide
 
 
 class TransactionModelNotTrainedError(RuntimeError):
@@ -55,6 +56,6 @@ def predict_transaction(features: dict) -> dict:
     pipeline = load_transaction_pipeline()
     probability = float(pipeline.predict_proba(transaction_to_dataframe(features))[0][1])
     return {
-        "prediction": "HIGH_RISK" if probability >= 0.5 else "LOW_RISK",
+        "prediction": decide(probability),
         "probability": round(probability, 4),
     }

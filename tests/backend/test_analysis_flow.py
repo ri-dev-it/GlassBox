@@ -51,7 +51,7 @@ def test_three_ui_submissions_generate_complete_analysis(client):
         response = client.post("/api/predict", json=payload, headers=headers)
         assert response.status_code == 201, response.get_json()
         result = response.get_json()
-        assert result["prediction"]["decision"] in {"APPROVED", "REJECTED"}
+        assert result["prediction"]["decision"] in {"APPROVE", "REVIEW", "DECLINE"}
         assert 0 <= result["prediction"]["probability"] <= 1
         assert result["shap"]["contributions"]
         assert result["lime"]["contributions"]

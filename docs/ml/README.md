@@ -41,6 +41,16 @@ held-out test set (accuracy, precision, recall, F1, ROC-AUC, confusion
 matrix), and selects the winner by F1 (not accuracy alone -- the dataset
 is class-imbalanced ~70/30). Nothing is hardcoded; see `ml/training/train.py`.
 
+## Three-band decisioning
+
+Both predictors pass probability of default to `ml/decisioning/bands.py`.
+By default, default probability below `0.15` returns `APPROVE`, values from
+`0.15` up to but excluding `0.55` return `REVIEW`, and values at or above
+`0.55` return `DECLINE`. Override these defaults with `APPROVE_BELOW` and
+`DECLINE_AT_OR_ABOVE` environment variables. `REVIEW` means flagged for manual
+underwriting review; these thresholds are configurable policy settings, not
+probability recalibration.
+
 Artifacts saved to `ml/models/saved/`:
 - `model.joblib` -- the full sklearn Pipeline (preprocessing + classifier).
 - `metadata.json` -- which model won, both models' metrics, dataset sizes.

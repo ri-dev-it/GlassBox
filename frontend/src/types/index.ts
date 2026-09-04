@@ -18,7 +18,7 @@ export type ApplicantFeatures = Record<string, string | number>;
 export interface PredictionResult {
   id: number;
   application_id: number;
-  decision: 'APPROVED' | 'REJECTED';
+  decision: 'APPROVE' | 'REVIEW' | 'DECLINE' | 'APPROVED' | 'REJECTED';
   probability: number;
   risk_score: number;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -55,7 +55,7 @@ export interface MerchantTransactionFeatures {
 
 export interface MerchantAssessment {
   prediction: {
-    prediction: 'HIGH_RISK' | 'LOW_RISK';
+    prediction: 'APPROVE' | 'REVIEW' | 'DECLINE';
     probability: number;
     risk_score: number;
     risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
@@ -196,7 +196,7 @@ export interface AnalysisReportFactor {
 
 export interface AnalysisReport {
   application_id: string;
-  decision: 'APPROVED' | 'REJECTED';
+  decision: 'APPROVE' | 'REVIEW' | 'DECLINE' | 'APPROVED' | 'REJECTED';
   probability: number;
   confidence: number;
   factors: AnalysisReportFactor[];
@@ -277,5 +277,6 @@ export interface ApplicationsSummary {
   total: number;
   approved: number;
   rejected: number;
+  review?: number;
   approval_rate: number | null;
 }

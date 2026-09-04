@@ -30,7 +30,7 @@ def submit_application(user, features: dict) -> dict:
     metadata = ml_service.get_model_metadata()
     shap_result = ml_service.get_shap_explanation(features, result["prediction"], result["probability"])
     lime_result = ml_service.get_lime_explanation(features, result["prediction"], result["probability"])
-    if result["prediction"] == "REJECTED":
+    if result["prediction"] == "DECLINE":
         cf_result = ml_service.get_counterfactual(features)
     else:
         cf_result = {

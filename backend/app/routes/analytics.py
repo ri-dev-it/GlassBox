@@ -43,12 +43,14 @@ def global_shap():
 def applications_summary():
     applications = application_service.get_all_applications()
     total = len(applications)
-    approved = sum(1 for a in applications if a.get("prediction") and a["prediction"]["decision"] == "APPROVED")
-    rejected = sum(1 for a in applications if a.get("prediction") and a["prediction"]["decision"] == "REJECTED")
+    approved = sum(1 for a in applications if a.get("prediction") and a["prediction"]["decision"] in {"APPROVE", "APPROVED"})
+    rejected = sum(1 for a in applications if a.get("prediction") and a["prediction"]["decision"] in {"DECLINE", "REJECTED"})
+    review = sum(1 for a in applications if a.get("prediction") and a["prediction"]["decision"] == "REVIEW")
     return jsonify({
         "total": total,
         "approved": approved,
         "rejected": rejected,
+        "review": review,
         "approval_rate": round(approved / total, 4) if total else None,
     }), 200
 
@@ -62,10 +64,10 @@ def dashboard_stats():
     risks = Counter(a["prediction"].get("risk_level", "MEDIUM") for a in applications if a.get("prediction"))
     return jsonify({
         "total": len(applications),
-        "approved": decisions["APPROVED"],
-        "rejected": decisions["REJECTED"],
-        "under_review": sum(1 for a in applications if not a.get("prediction")),
-        "approval_rate": round(decisions["APPROVED"] / len(applications) * 100, 1) if applications else None,
+        "approved": decisions["APPROVE"] + decisions["APPROVED"],
+        "rejected": decisions["DECLINE"] + decisions["REJECTED"],
+        "under_review": decisions["REVIEW"] + sum(1 for a in applications if not a.get("prediction")),
+        "approval_rate": round(decisions["APPROVE"] / len(applications) * 100, 1) if applications else None,
         "risk_distribution": {"low": risks["LOW"], "medium": risks["MEDIUM"], "high": risks["HIGH"]},
         "recent_applications": applications[:5],
     }), 200

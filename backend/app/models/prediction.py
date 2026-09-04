@@ -8,7 +8,7 @@ class Prediction(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     application_id = db.Column(db.Integer, db.ForeignKey("applications.id"), nullable=False, unique=True, index=True)
-    decision = db.Column(db.String(20), nullable=False)      # APPROVED | REJECTED
+    decision = db.Column(db.String(20), nullable=False)      # APPROVE | REVIEW | DECLINE; legacy values remain readable
     probability = db.Column(db.Float, nullable=False)        # model probability of approval
     model_name = db.Column(db.String(50), nullable=False)    # e.g. "xgboost"
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
@@ -18,7 +18,10 @@ class Prediction(db.Model):
 
     def to_dict(self) -> dict:
         risk_probability = 1 - self.probability
-        risk_level = "LOW" if risk_probability < 0.30 else "MEDIUM" if risk_probability < 0.60 else "HIGH"
+        risk_level = {"APPROVE": "LOW", "REVIEW": "MEDIUM", "DECLINE": "HIGH"}.get(
+            self.decision,
+            "LOW" if risk_probability < 0.30 else "MEDIUM" if risk_probability < 0.60 else "HIGH",
+        )
         return {
             "id": self.id,
             "application_id": self.application_id,
