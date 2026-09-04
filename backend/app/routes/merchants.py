@@ -16,3 +16,14 @@ def assess_merchant():
     except MLServiceError as error:
         return jsonify({"error": error.message}), error.status_code
     return jsonify(result), 200
+
+
+@merchants_bp.post("/merchants/fraud-check")
+@roles_required("applicant", "loan_officer", "admin")
+def fraud_check():
+    data = request.get_json(silent=True) or {}
+    try:
+        result = ml_service.check_merchant_fraud(data.get("merchant_id"), data.get("transaction_history"))
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code
+    return jsonify(result), 200

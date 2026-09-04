@@ -164,6 +164,7 @@ def assess_merchant(features: dict) -> dict:
     _require_ml()
     try:
         from data.synthetic_transactions import TRANSACTION_FEATURES, TRANSACTION_LABELS, TRANSACTION_RANGES
+        from fraud.pattern_detector import FRAUD_SCORE_THRESHOLD, detect_fraud_signals
         from prediction.transaction_predictor import transaction_to_dataframe
 
         errors = []
@@ -196,6 +197,12 @@ def assess_merchant(features: dict) -> dict:
             positive_direction="toward higher risk", negative_direction="toward lower risk",
             positive_prediction="HIGH_RISK",
         )
+        fraud_result = None
+        transaction_history = features.get("transaction_history")
+        if transaction_history is not None:
+            fraud_result = detect_fraud_signals(transaction_history)
+            if fraud_result["fraud_score"] >= FRAUD_SCORE_THRESHOLD:
+                summary += "\n- Transparent fraud-pattern rules also flagged abnormal transaction behavior; review the flagged days before relying on this risk assessment."
         return {
             "prediction": {
                 **result,
@@ -204,7 +211,23 @@ def assess_merchant(features: dict) -> dict:
                 "model_name": "synthetic_transaction_model",
             },
             "shap": {"contributions": contributions, "plain_english": summary},
+            "fraud": fraud_result,
             "disclaimer": "This assessment uses synthetic transaction data for demo purposes, not real Razorpay merchant data or policy.",
         }
     except TransactionModelNotTrainedError as e:
         raise MLServiceError(str(e), 503)
+
+
+def check_merchant_fraud(merchant_id: str, transaction_history: list[dict]) -> dict:
+    _require_ml()
+    if not merchant_id:
+        raise MLServiceError("'merchant_id' is required.", 400)
+    if not isinstance(transaction_history, list) or not transaction_history:
+        raise MLServiceError("'transaction_history' must be a non-empty list.", 400)
+    required_fields = {"date", "gmv", "refund_count", "chargeback_count", "order_count"}
+    invalid = [index for index, record in enumerate(transaction_history)
+               if not isinstance(record, dict) or not required_fields.issubset(record)]
+    if invalid:
+        raise MLServiceError(f"Each transaction history record must contain {sorted(required_fields)} (invalid rows: {invalid}).", 400)
+    from fraud.pattern_detector import detect_fraud_signals
+    return {"merchant_id": merchant_id, **detect_fraud_signals(transaction_history)}

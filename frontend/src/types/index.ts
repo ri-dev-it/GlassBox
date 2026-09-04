@@ -62,7 +62,23 @@ export interface MerchantAssessment {
     model_name: string;
   };
   shap: ExplanationResult;
+  fraud: FraudCheckResult | null;
   disclaimer: string;
+}
+
+export interface MerchantTransactionDay {
+  date: string;
+  gmv: number;
+  refund_count: number;
+  chargeback_count: number;
+  order_count: number;
+}
+
+export interface FraudCheckResult {
+  merchant_id: string;
+  fraud_score: number;
+  flags: string[];
+  flagged_days: string[];
 }
 
 export interface ComparisonResult {

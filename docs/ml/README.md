@@ -18,6 +18,14 @@ The additive merchant-risk path is trained with `python training/train_transacti
 Its transaction features and labels are synthetic, simulated demo data only; they are not
 real Razorpay merchant data and must not be treated as confirmed underwriting policy.
 
+## Merchant fraud-pattern checks
+
+`POST /api/merchants/fraud-check` runs the defensive, explainable rules in
+`ml/fraud/pattern_detector.py` against daily transaction history. It checks
+refund spikes, seven-day chargeback clusters, order-velocity anomalies, and
+sharp GMV increases followed by elevated refunds. The score is a bounded
+review signal, not proof of fraud and not a real-time Razorpay policy result.
+
 `train.py` trains Logistic Regression (baseline) and XGBoost (falls back
 to RandomForest if xgboost isn't installed), evaluates both on the same
 held-out test set (accuracy, precision, recall, F1, ROC-AUC, confusion

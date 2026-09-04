@@ -4,7 +4,7 @@ import type {
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
-  DocumentRecord, DocumentType, MerchantAssessment, MerchantTransactionFeatures,
+  DocumentRecord, DocumentType, FraudCheckResult, MerchantAssessment, MerchantTransactionDay, MerchantTransactionFeatures,
 } from '../types';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -76,8 +76,10 @@ export const explanationApi = {
 };
 
 export const merchantApi = {
-  assess: (features: MerchantTransactionFeatures) =>
+  assess: (features: MerchantTransactionFeatures & { merchant_id: string; transaction_history: MerchantTransactionDay[] }) =>
     api.post<MerchantAssessment>('/merchants/assess', features).then((r) => r.data),
+  fraudCheck: (merchant_id: string, transaction_history: MerchantTransactionDay[]) =>
+    api.post<FraudCheckResult>('/merchants/fraud-check', { merchant_id, transaction_history }).then((r) => r.data),
 };
 
 export const analyticsApi = {
