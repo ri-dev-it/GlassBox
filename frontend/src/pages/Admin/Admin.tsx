@@ -108,7 +108,7 @@ export default function Admin() {
                   <tbody>
                     {Object.entries(modelMetrics.latest).map(([key, metric]) => (
                       <tr key={key} className="border-b border-slate-100 last:border-0">
-                        <td className="py-3 font-medium text-slate-700">{key === 'income_model' ? 'Income-based model' : 'Transaction-based model'}</td>
+                        <td className="py-3 font-medium text-slate-700"><div>{key === 'income_model' ? 'Income-based model' : 'Transaction-based model'}</div><span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${metric.governance.passed ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{metric.governance.passed ? 'Governance passed' : 'Governance failed'}</span></td>
                         <td className="py-3 text-slate-600">{metric.precision.toFixed(3)}</td>
                         <td className="py-3 text-slate-600">{metric.recall.toFixed(3)}</td>
                         <td className="py-3 text-slate-600">{metric.f1.toFixed(3)}</td>

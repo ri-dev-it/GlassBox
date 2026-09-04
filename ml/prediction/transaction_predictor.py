@@ -22,6 +22,13 @@ def load_transaction_pipeline():
             f"No transaction model found at {TRANSACTION_MODEL_FILE}. "
             "Run `python training/train_transaction_model.py` inside ml/."
         )
+    metadata = load_transaction_metadata()
+    governance = metadata.get("governance")
+    if governance is not None and not governance.get("passed", False):
+        raise TransactionModelNotTrainedError(
+            "Transaction model is blocked from serving because fairness governance failed: "
+            f"{governance.get('failed_checks', [])}"
+        )
     return joblib.load(TRANSACTION_MODEL_FILE)
 
 

@@ -10,5 +10,6 @@ from app.models.merchant import (MerchantDocumentVerification, MerchantFraudChec
 								 MerchantTierAssessment, MerchantTransactionDay,
 								 MerchantTransactionProfile, PortfolioExposureSnapshot)
 from app.models.model_metric import ModelMetric
+from app.models.governance import GovernanceCheck
 
-__all__ = ["User", "Applicant", "Application", "Prediction", "Explanation", "Counterfactual", "Document", "DocumentVerification", "BankEligibilityResult", "MerchantDocumentVerification", "MerchantFraudCheck", "MerchantTierAssessment", "MerchantTransactionDay", "MerchantTransactionProfile", "PortfolioExposureSnapshot", "ModelMetric"]
+__all__ = ["User", "Applicant", "Application", "Prediction", "Explanation", "Counterfactual", "Document", "DocumentVerification", "BankEligibilityResult", "MerchantDocumentVerification", "MerchantFraudCheck", "MerchantTierAssessment", "MerchantTransactionDay", "MerchantTransactionProfile", "PortfolioExposureSnapshot", "ModelMetric", "GovernanceCheck"]

@@ -26,6 +26,7 @@ in `database/schema.sql`; in normal development, use Flask-Migrate:
 - **portfolio_exposure_snapshots** -- portfolio tier counts, simulated exposure, and blocking-signal summaries.
 - **merchant_document_verifications** -- manual declared GST/bank values and consistency results, separate from uploaded-document verification.
 - **model_metrics** -- held-out precision, recall, F1, and ROC-AUC snapshots for both income-based and transaction-based model versions.
+- **governance_checks** -- historical fairness gate pass/fail decisions and failed checks per model version.
 
 The merchant risk tables are additive to the original loan schema. Apply the
 latest migration with `flask db upgrade`; `database/schema.sql` is also kept

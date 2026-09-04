@@ -30,6 +30,13 @@ def load_pipeline():
             f"No trained model found at {MODEL_FILE}. Run "
             "`python data/download_dataset.py && python training/train.py` inside ml/ first."
         )
+    metadata = load_metadata()
+    governance = metadata.get("governance")
+    if governance is not None and not governance.get("passed", False):
+        raise ModelNotTrainedError(
+            "Income model is blocked from serving because fairness governance failed: "
+            f"{governance.get('failed_checks', [])}"
+        )
     return joblib.load(MODEL_FILE)
 
 

@@ -32,6 +32,8 @@ from config import RAW_DATA_FILE, MODEL_FILE, METADATA_FILE, TARGET_COLUMN, RAND
 from preprocessing.preprocessing import build_preprocessor  # noqa: E402
 from preprocessing.feature_config import NUMERIC_FEATURES, CATEGORICAL_FEATURES, PROTECTED_ATTRIBUTE_COLUMN  # noqa: E402
 from training.evaluate import evaluate_model, print_metrics  # noqa: E402
+from fairness.fairness_analyzer import run_fairness_analysis  # noqa: E402
+from fairness.governance_gate import check_governance  # noqa: E402
 
 try:
     from xgboost import XGBClassifier
@@ -109,10 +111,6 @@ def main():
     winner_pipeline = candidates[winner_name]
     print(f"\nSelected final model: {winner_name} (highest F1 = {results[winner_name]['f1']:.4f})")
 
-    # --- Save model ---
-    joblib.dump(winner_pipeline, MODEL_FILE)
-    print(f"Saved model pipeline to {MODEL_FILE}")
-
     # --- Save a labeled copy of the test set + predictions, for the fairness dashboard ---
     test_out = X_test.copy()
     test_out[TARGET_COLUMN] = y_test.values
@@ -120,6 +118,16 @@ def main():
     test_out["prediction"] = winner_pipeline.predict(X_test)
     test_out.to_csv(TEST_SET_WITH_PREDICTIONS, index=False)
     print(f"Saved labeled test set + predictions to {TEST_SET_WITH_PREDICTIONS}")
+
+    fairness_metrics = run_fairness_analysis()
+    governance = check_governance(fairness_metrics)
+    if not governance["passed"]:
+        print(f"[governance] Income model was not saved because fairness checks failed: {governance['failed_checks']}")
+        return
+
+    # --- Save model only after governance passes ---
+    joblib.dump(winner_pipeline, MODEL_FILE)
+    print(f"Saved model pipeline to {MODEL_FILE}")
 
     # --- Save metadata ---
     metadata = {
@@ -137,6 +145,10 @@ def main():
         "protected_attribute": PROTECTED_ATTRIBUTE_COLUMN,
         "model_comparison": results,
         "xgboost_available": HAS_XGBOOST,
+        "governance": {
+            **governance,
+            "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        },
     }
     with open(METADATA_FILE, "w") as f:
         json.dump(metadata, f, indent=2)

@@ -40,6 +40,12 @@ def run_fairness_analysis() -> dict:
     y_pred = df["prediction"]
     groups = df[PROTECTED_ATTRIBUTE]
 
+    return run_fairness_analysis_for_data(y_true, y_pred, groups, PROTECTED_ATTRIBUTE)
+
+
+def run_fairness_analysis_for_data(y_true, y_pred, groups, protected_attribute: str) -> dict:
+    """Run the existing Fairlearn audit over supplied held-out predictions."""
+
     metric_frame = MetricFrame(
         metrics={
             "accuracy": accuracy_score,
@@ -64,11 +70,10 @@ def run_fairness_analysis() -> dict:
         return f"No substantial disparity detected on {name} under this metric (difference = {value:.3f})."
 
     return {
-        "protected_attribute": PROTECTED_ATTRIBUTE,
+        "protected_attribute": protected_attribute,
         "protected_attribute_caveat": (
-            "This attribute is derived from a joint marital-status/sex field in the "
-            "source dataset and is a proxy, not a clean self-reported attribute. "
-            "See docs/fairness/README.md."
+            f"Fairness was audited across the supplied '{protected_attribute}' groups. "
+            "This grouping is a governance signal, not a legal or absolute fairness verdict."
         ),
         "group_metrics": by_group,
         "overall_metrics": {
@@ -83,7 +88,7 @@ def run_fairness_analysis() -> dict:
             interpret("demographic parity (selection/approval rate)", dp_diff),
             interpret("equalized odds (TPR/FPR balance)", eo_diff),
         ],
-        "sample_size": len(df),
+        "sample_size": len(y_true),
         "disclaimer": (
             "Fairness is context-dependent. These metrics describe statistical "
             "patterns in this model's outcomes on this test set -- they are not "

@@ -51,6 +51,11 @@ comparison is served by `GET /api/analytics/models`; each current metadata
 version is also snapshotted in the backend `model_metrics` table so history
 is not limited to the latest JSON overwrite.
 
+Before either model is saved or served, the Fairlearn governance gate checks
+the configured disparity limits. A failed check is recorded in
+`governance_checks`, prevents the training run from replacing the served
+artifact, and causes the corresponding predictor to refuse inference.
+
 `ml/data/processed/test_with_predictions.csv` -- the held-out test set
 with predictions attached, used by the fairness dashboard so it never
 has to retrain or leak into training data.

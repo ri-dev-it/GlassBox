@@ -7,6 +7,7 @@ package directly -- routes call this service, never ml/ modules directly
 
 import os
 import sys
+import datetime
 from functools import lru_cache
 
 _ML_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "ml"))
@@ -156,7 +157,7 @@ def get_models_metrics() -> dict:
     """Return and snapshot held-out metrics for the income and transaction models."""
     _require_ml()
     from app.extensions import db
-    from app.models import ModelMetric
+    from app.models import GovernanceCheck, ModelMetric
     from prediction.transaction_predictor import load_transaction_metadata
 
     try:
@@ -183,7 +184,21 @@ def get_models_metrics() -> dict:
             )
             db.session.add(snapshot)
             db.session.flush()
-        latest[model_key] = snapshot.to_dict()
+        governance = metadata.get("governance", {"passed": False, "failed_checks": ["No governance result is recorded for this model version."]})
+        governance_row = GovernanceCheck.query.filter_by(model_key=model_key, model_version=version).first()
+        if governance_row is None:
+            checked_at = governance.get("checked_at")
+            if isinstance(checked_at, str):
+                checked_at = datetime.datetime.fromisoformat(checked_at.replace("Z", "+00:00")).replace(tzinfo=None)
+            governance_row = GovernanceCheck(
+                model_key=model_key, model_version=version,
+                passed=governance["passed"],
+                checked_at=checked_at,
+            )
+            governance_row.set_failed_checks(governance.get("failed_checks", []))
+            db.session.add(governance_row)
+            db.session.flush()
+        latest[model_key] = {**snapshot.to_dict(), "governance": governance_row.to_dict()}
     db.session.commit()
     history = {
         model_key: [metric.to_dict() for metric in ModelMetric.query.filter_by(model_key=model_key).order_by(ModelMetric.evaluated_at.desc()).all()]

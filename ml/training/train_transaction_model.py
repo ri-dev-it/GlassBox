@@ -27,6 +27,8 @@ from config import (  # noqa: E402
 )
 from data.synthetic_transactions import TRANSACTION_FEATURES, generate_synthetic_transactions  # noqa: E402
 from training.evaluate import evaluate_model, print_metrics  # noqa: E402
+from fairness.fairness_analyzer import run_fairness_analysis_for_data  # noqa: E402
+from fairness.governance_gate import check_governance  # noqa: E402
 
 try:
     from xgboost import XGBClassifier
@@ -79,6 +81,15 @@ def main() -> None:
 
     winner_name = max(results, key=lambda name: (results[name]["f1"], results[name].get("roc_auc", 0)))
     winner_pipeline = candidates[winner_name]
+    fairness_metrics = run_fairness_analysis_for_data(
+        y_test, winner_pipeline.predict(X_test),
+        X_test["account_age_days"] >= X_test["account_age_days"].median(),
+        "account_age_band",
+    )
+    governance = check_governance(fairness_metrics)
+    if not governance["passed"]:
+        print(f"[governance] Transaction model was not saved because fairness checks failed: {governance['failed_checks']}")
+        return
     joblib.dump(winner_pipeline, TRANSACTION_MODEL_FILE)
 
     metadata = {
@@ -97,6 +108,10 @@ def main() -> None:
         "target_column": TARGET_COLUMN,
         "model_comparison": results,
         "xgboost_available": HAS_XGBOOST,
+        "governance": {
+            **governance,
+            "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        },
     }
     with open(TRANSACTION_METADATA_FILE, "w") as file:
         json.dump(metadata, file, indent=2)

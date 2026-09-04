@@ -246,6 +246,15 @@ export interface ModelMetricSnapshot {
   dataset_size: number | null;
   test_size: number | null;
   evaluated_at: string | null;
+  governance: GovernanceStatus;
+}
+
+export interface GovernanceStatus {
+  model_key: string;
+  model_version: string;
+  passed: boolean;
+  failed_checks: string[];
+  checked_at: string | null;
 }
 
 export interface ModelsMetrics {

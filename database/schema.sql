@@ -147,3 +147,13 @@ CREATE TABLE IF NOT EXISTS model_metrics (
     evaluated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_model_metrics_model_key (model_key)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS governance_checks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    model_key VARCHAR(100) NOT NULL,
+    model_version VARCHAR(100) NOT NULL,
+    passed BOOLEAN NOT NULL,
+    failed_checks_json TEXT NOT NULL,
+    checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_governance_checks_model_key (model_key)
+) ENGINE=InnoDB;
