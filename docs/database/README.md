@@ -27,6 +27,8 @@ in `database/schema.sql`; in normal development, use Flask-Migrate:
 - **merchant_document_verifications** -- manual declared GST/bank values and consistency results, separate from uploaded-document verification.
 - **model_metrics** -- held-out precision, recall, F1, and ROC-AUC snapshots for both income-based and transaction-based model versions.
 - **governance_checks** -- historical fairness gate pass/fail decisions and failed checks per model version.
+- **grounded_explanations** -- cached plain-English SHAP explanations keyed to an application or merchant, including source and driver names.
+- **grounded_explanations** -- cached plain-English explanations keyed to an application or merchant, with source (`llm`/`template`) and SHAP driver names.
 
 The merchant risk tables are additive to the original loan schema. Apply the
 latest migration with `flask db upgrade`; `database/schema.sql` is also kept

@@ -42,6 +42,16 @@ export interface ExplanationResult {
   plain_english: string;
 }
 
+export interface GroundedExplanation {
+  id: number;
+  application_id: number | null;
+  merchant_id: string | null;
+  text: string;
+  source: 'llm' | 'template';
+  grounded_in: string[];
+  generated_at: string | null;
+}
+
 export interface MerchantTransactionFeatures {
   gmv_trend_30d: number;
   gmv_trend_90d: number;

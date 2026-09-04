@@ -21,13 +21,36 @@ require `Authorization: Bearer <jwt>`.
 | GET | `/applications` | any | Applicants see their own; staff see all. |
 | GET | `/applications/:id` | any | Full detail (prediction, both explanations, comparison, counterfactual). Applicants can only view their own. |
 
-## Explanations (on-demand, without persisting)
+## Explanations
 
 | Method | Path | Access | Description |
 |---|---|---|---|
 | POST | `/explain/shap` | any | Local SHAP explanation for the given applicant payload. |
 | POST | `/explain/lime` | any | Local LIME explanation for the given applicant payload. |
 | POST | `/explain/counterfactual` | any | DiCE counterfactual for the given applicant payload. |
+
+Grounded explanations are cached after first generation:
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| GET | `/explain/<application_id>` | any | Returns a persisted explanation grounded in the application's SHAP drivers. |
+| GET | `/explain/merchant/<merchant_id>` | any | Returns a persisted explanation grounded in the merchant model's SHAP drivers. |
+
+Only feature names and signed SHAP contributions are sent to the optional LLM.
+Responses that fail the driver-name grounding check, missing API keys, and LLM
+errors use the deterministic system-generated template instead.
+
+## Grounded explanations
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| GET | `/explain/<application_id>` | any | Returns a cached or newly generated plain-English explanation grounded in the application's SHAP drivers. |
+| GET | `/explain/merchant/<merchant_id>` | any | Returns a cached or newly generated explanation grounded in the merchant model's SHAP drivers. |
+
+Only feature names and signed SHAP contributions are sent to the optional
+LLM; no PII or full application payload is included. If `OPENAI_API_KEY` is
+unset, the call fails, or the response does not mention the top real SHAP
+drivers, the deterministic system-generated template is returned instead.
 
 ## Analytics (staff/admin)
 

@@ -66,6 +66,16 @@ the configured disparity limits. A failed check is recorded in
 `governance_checks`, prevents the training run from replacing the served
 artifact, and causes the corresponding predictor to refuse inference.
 
+## Grounded plain-English explanations
+
+`ml/explain/grounded_explanation.py` optionally summarizes the top SHAP
+drivers through an LLM. Its prompt contains only feature names and signed
+contributions, never PII. The response must mention both top drivers or it is
+discarded and replaced by a deterministic template. Missing API keys and LLM
+errors also fall back cleanly. Results are cached in `grounded_explanations`
+and served by the application and merchant explanation endpoints, with the UI
+labeling the source as `AI-generated` or `System-generated`.
+
 `ml/data/processed/test_with_predictions.csv` -- the held-out test set
 with predictions attached, used by the fairness dashboard so it never
 has to retrain or leak into training data.

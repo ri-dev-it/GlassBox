@@ -122,6 +122,47 @@ def get_lime_explanation(applicant: dict, prediction: str, probability: float) -
         raise MLServiceError(str(e), 503)
 
 
+def get_grounded_application_explanation(application_id: int, user) -> dict | None:
+    _require_ml()
+    from app.extensions import db
+    from app.models import Application, GroundedExplanation
+    from explain.grounded_explanation import explain
+
+    application = Application.query.get(application_id)
+    if not application or (user.role == "applicant" and application.applicant.user_id != user.id):
+        return None
+    existing = GroundedExplanation.query.filter_by(application_id=application_id).first()
+    if existing:
+        return existing.to_dict()
+    shap = next((item for item in application.prediction.explanations if item.method == "shap"), None) if application.prediction else None
+    if not shap:
+        return None
+    result = explain(shap.get_contributions())
+    record = GroundedExplanation(application_id=application_id, text=result["text"], source=result["source"])
+    record.set_grounded_in(result["grounded_in"])
+    db.session.add(record)
+    db.session.commit()
+    return record.to_dict()
+
+
+def get_grounded_merchant_explanation(merchant_id: str) -> dict | None:
+    _require_ml()
+    from app.extensions import db
+    from app.models import GroundedExplanation
+    from explain.grounded_explanation import explain
+
+    existing = GroundedExplanation.query.filter_by(merchant_id=str(merchant_id)).first()
+    if existing:
+        return existing.to_dict()
+    assessment = assess_merchant({**_merchant_features(merchant_id), "merchant_id": merchant_id})
+    result = explain(assessment["shap"]["contributions"])
+    record = GroundedExplanation(merchant_id=str(merchant_id), text=result["text"], source=result["source"])
+    record.set_grounded_in(result["grounded_in"])
+    db.session.add(record)
+    db.session.commit()
+    return record.to_dict()
+
+
 def get_shap_lime_comparison(shap_contributions: list, lime_contributions: list) -> dict:
     _require_ml()
     return compare_explanations(shap_contributions, lime_contributions)
@@ -251,7 +292,7 @@ def assess_merchant(features: dict) -> dict:
         summary = generate_summary(
             contributions, result["prediction"], result["probability"],
             positive_direction="toward higher risk", negative_direction="toward lower risk",
-            positive_prediction="HIGH_RISK",
+            positive_prediction="DECLINE",
         )
         fraud_result = None
         transaction_history = features.get("transaction_history")

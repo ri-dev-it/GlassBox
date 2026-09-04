@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from app.middleware.auth_middleware import roles_required
 from app.schemas.application_schema import validate_application_payload
@@ -6,6 +6,30 @@ from app.services import ml_service
 from app.services.ml_service import MLServiceError
 
 explanations_bp = Blueprint("explanations", __name__)
+
+
+@explanations_bp.get("/explain/<int:application_id>")
+@roles_required("applicant", "loan_officer", "admin")
+def grounded_application_explanation(application_id):
+    try:
+        result = ml_service.get_grounded_application_explanation(application_id, g.current_user)
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code
+    if result is None:
+        return jsonify({"error": "Application or SHAP explanation not found."}), 404
+    return jsonify(result), 200
+
+
+@explanations_bp.get("/explain/merchant/<merchant_id>")
+@roles_required("applicant", "loan_officer", "admin")
+def grounded_merchant_explanation(merchant_id):
+    try:
+        result = ml_service.get_grounded_merchant_explanation(merchant_id)
+    except MLServiceError as error:
+        return jsonify({"error": error.message}), error.status_code
+    if result is None:
+        return jsonify({"error": "Merchant explanation not found."}), 404
+    return jsonify(result), 200
 
 
 def _predict_and_validate(data: dict):

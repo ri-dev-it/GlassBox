@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { AnalysisReport, ApplicationDetail } from '../../types';
-import { applicationApi } from '../../services/api';
+import type { AnalysisReport, ApplicationDetail, GroundedExplanation } from '../../types';
+import { applicationApi, explanationApi } from '../../services/api';
 import ContributionBarChart from '../../components/charts/ContributionBarChart';
 import PlainEnglishCard from '../../components/explanations/PlainEnglishCard';
 import CounterfactualTable from '../../components/explanations/CounterfactualTable';
@@ -15,6 +15,7 @@ export default function Results() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showTechnical, setShowTechnical] = useState(false);
+  const [grounded, setGrounded] = useState<GroundedExplanation | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -23,6 +24,7 @@ export default function Results() {
       .then(setDetail)
       .catch(() => setError('Could not load this application.'));
     applicationApi.report(Number(id)).then(setReport).catch(() => undefined);
+    explanationApi.groundedApplication(Number(id)).then(setGrounded).catch(() => undefined);
   }, [id]);
 
   if (error) return <p className="text-rejected">{error}</p>;
@@ -67,6 +69,8 @@ export default function Results() {
           <PlainEnglishCard text={shap.plain_english} />
         </section>
       )}
+
+      {grounded && <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold text-slate-800">Plain-English SHAP explanation</h2><span className={`rounded-full px-2 py-1 text-xs font-semibold ${grounded.source === 'llm' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-700'}`}>{grounded.source === 'llm' ? 'AI-generated' : 'System-generated'}</span></div><p className="mt-3 whitespace-pre-line text-sm text-slate-600">{grounded.text}</p><p className="mt-3 text-xs text-slate-400">Grounded in: {grounded.grounded_in.join(', ')}</p></section>}
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-medium text-sky-700">AI-assisted document verification</p><h2 className="mt-1 text-lg font-semibold text-slate-800">Document Verification</h2>

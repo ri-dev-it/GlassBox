@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type {
-  AuthResponse, ApplicantFeatures, ApplicationDetail, ExplanationResult,
+  AuthResponse, ApplicantFeatures, ApplicationDetail, ExplanationResult, GroundedExplanation,
   CounterfactualResult, ModelMetadata, GlobalShapEntry, FairnessReport,
   ApplicationsSummary,
   AnalysisReport,
@@ -67,6 +67,8 @@ export const documentApi = {
 };
 
 export const explanationApi = {
+  groundedApplication: (applicationId: number) => api.get<GroundedExplanation>(`/explain/${applicationId}`).then((r) => r.data),
+  groundedMerchant: (merchantId: string) => api.get<GroundedExplanation>(`/explain/merchant/${encodeURIComponent(merchantId)}`).then((r) => r.data),
   shap: (features: ApplicantFeatures) =>
     api.post<{ prediction: unknown } & ExplanationResult>('/explain/shap', features).then((r) => r.data),
   lime: (features: ApplicantFeatures) =>
